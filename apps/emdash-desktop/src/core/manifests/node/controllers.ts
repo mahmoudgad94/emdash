@@ -22,6 +22,7 @@ import {
 import { createCatalogWireController } from '@core/features/catalog/node/wire-controller';
 import type { CoreLink } from '@core/features/clientops-core/node/core-link';
 import { createClientOpsCoreWireController } from '@core/features/clientops-core/node/wire-controller';
+import { createClientsWireController } from '@core/features/clients/node/wire-controller';
 import type { CompensationRunner } from '@core/features/conversations/node/createConversation';
 import { createConversationsWireController } from '@core/features/conversations/node/wire-controller';
 import {
@@ -212,6 +213,9 @@ export const desktopNodeControllers = {
       scope.add(() => clientOpsCore.dispose());
       return createClientOpsCoreWireController(clientOpsCore);
     },
+  },
+  clients: {
+    create: ({ clientOpsCore }) => createClientsWireController(clientOpsCore),
   },
   devPerf: {
     create: ({ devPerfOperations, logger }) =>
