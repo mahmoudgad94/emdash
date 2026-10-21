@@ -45,6 +45,7 @@ import type { PromptLibraryService } from '@core/features/library/node/prompt-li
 import { createPromptLibraryWireController } from '@core/features/library/node/wire-controller';
 import { createMachinesWireController } from '@core/features/machines/node/wire-controller';
 import { createMcpWireController } from '@core/features/mcp/node/wire-controller';
+import { createObservedSessionsWireController } from '@core/features/observed-sessions/node/wire-controller';
 import type { PreviewServerAccessOperations } from '@core/features/preview-servers/node/preview-server-access-service';
 import { createPreviewServersWireController } from '@core/features/preview-servers/node/wire-controller';
 import type { ProjectAttachmentManager } from '@core/features/projects/api/node/project-attachment-manager';
@@ -216,6 +217,9 @@ export const desktopNodeControllers = {
   },
   clients: {
     create: ({ clientOpsCore }) => createClientsWireController(clientOpsCore),
+  },
+  observedSessions: {
+    create: ({ clientOpsCore }) => createObservedSessionsWireController(clientOpsCore),
   },
   devPerf: {
     create: ({ devPerfOperations, logger }) =>

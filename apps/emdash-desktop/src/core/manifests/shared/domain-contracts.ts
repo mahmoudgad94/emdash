@@ -16,6 +16,10 @@ import { legacyPortContract, legacyPortDomain } from '@core/features/legacy-port
 import { promptLibraryContract, promptLibraryDomain } from '@core/features/library/api';
 import { machinesContract, machinesDomain } from '@core/features/machines/api';
 import { mcpContract, mcpDomain } from '@core/features/mcp/api';
+import {
+  observedSessionsContract,
+  observedSessionsDomain,
+} from '@core/features/observed-sessions/api';
 import { previewServersContract, previewServersDomain } from '@core/features/preview-servers/api';
 import { projectsDomain, projectsWireContract } from '@core/features/projects/api';
 import { repositoryContract, repositoryDomain } from '@core/features/repository/api';
@@ -78,6 +82,7 @@ export const desktopDomainContracts = {
   [catalogDomain]: catalogWireContract,
   [clientOpsCoreDomain]: clientOpsCoreContract,
   [clientsDomain]: clientsContract,
+  [observedSessionsDomain]: observedSessionsContract,
   [workspacesDomain]: workspacesWireContract,
   [workspaceRegistryDomain]: workspaceRegistryWireContract,
   [lifecycleScriptsDomain]: lifecycleScriptsWireContract,
