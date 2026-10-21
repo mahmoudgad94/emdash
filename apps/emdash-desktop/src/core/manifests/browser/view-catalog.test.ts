@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { automationsViewDef } from '@core/features/automations/contributions/views';
+import { clientsViewDef } from '@core/features/observed-sessions/contributions/views';
 import { projectViewDef } from '@core/features/projects/contributions/views';
 import { settingsViewDef } from '@core/features/settings/contributions/views';
 import { taskViewDef } from '@core/features/tasks/contributions/views';
@@ -11,6 +12,7 @@ describe('viewCatalog', () => {
     expect(viewCatalog.defs.map(({ id }) => id)).toEqual([
       'home',
       'automations',
+      'clients',
       'project',
       'task',
       'settings',
@@ -24,11 +26,16 @@ describe('viewCatalog', () => {
     expect(automationsViewDef.safeRef({})).toBeDefined();
     expect(settingsViewDef.safeRef(undefined)).toBeDefined();
     expect(settingsViewDef.safeRef({})).toBeDefined();
+    expect(clientsViewDef.safeRef(undefined)).toBeDefined();
+    expect(clientsViewDef.safeRef({})).toBeDefined();
   });
 
   it('validates optional view params against their declared literals', () => {
     expect(automationsViewDef.safeRef({ automationId: 'automation-1' })).toBeDefined();
     expect(automationsViewDef.safeRef({ automationId: 1 })).toBeUndefined();
+    expect(clientsViewDef.safeRef({ clientId: 'c1', sessionId: 's1' })).toBeDefined();
+    expect(clientsViewDef.safeRef({ scope: 'own' })).toBeDefined();
+    expect(clientsViewDef.safeRef({ scope: 'everything' })).toBeUndefined();
     expect(settingsViewDef.safeRef({ tab: 'browser' })).toBeDefined();
     expect(settingsViewDef.safeRef({ tab: 'unknown' })).toBeUndefined();
   });
@@ -60,6 +67,7 @@ describe('viewCatalog', () => {
     ).toEqual({
       home: 'home_viewed',
       automations: 'automations_viewed',
+      clients: 'clients_viewed',
       project: 'project_viewed',
       task: 'task_viewed',
       settings: 'settings_viewed',
