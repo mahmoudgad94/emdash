@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { automationsViewDef } from '@core/features/automations/contributions/views';
+import { messagesViewDef } from '@core/features/messaging/contributions/views';
 import { clientsViewDef } from '@core/features/observed-sessions/contributions/views';
 import { projectViewDef } from '@core/features/projects/contributions/views';
 import { settingsViewDef } from '@core/features/settings/contributions/views';
@@ -13,6 +14,7 @@ describe('viewCatalog', () => {
       'home',
       'automations',
       'clients',
+      'messages',
       'project',
       'task',
       'settings',
@@ -28,6 +30,8 @@ describe('viewCatalog', () => {
     expect(settingsViewDef.safeRef({})).toBeDefined();
     expect(clientsViewDef.safeRef(undefined)).toBeDefined();
     expect(clientsViewDef.safeRef({})).toBeDefined();
+    expect(messagesViewDef.safeRef(undefined)).toBeDefined();
+    expect(messagesViewDef.safeRef({})).toBeDefined();
   });
 
   it('validates optional view params against their declared literals', () => {
@@ -36,6 +40,8 @@ describe('viewCatalog', () => {
     expect(clientsViewDef.safeRef({ clientId: 'c1', sessionId: 's1' })).toBeDefined();
     expect(clientsViewDef.safeRef({ scope: 'own' })).toBeDefined();
     expect(clientsViewDef.safeRef({ scope: 'everything' })).toBeUndefined();
+    expect(messagesViewDef.safeRef({ conversationId: 'cv1.abc', needYou: true })).toBeDefined();
+    expect(messagesViewDef.safeRef({ needYou: 'yes' })).toBeUndefined();
     expect(settingsViewDef.safeRef({ tab: 'browser' })).toBeDefined();
     expect(settingsViewDef.safeRef({ tab: 'unknown' })).toBeUndefined();
   });
@@ -68,6 +74,7 @@ describe('viewCatalog', () => {
       home: 'home_viewed',
       automations: 'automations_viewed',
       clients: 'clients_viewed',
+      messages: 'messages_viewed',
       project: 'project_viewed',
       task: 'task_viewed',
       settings: 'settings_viewed',

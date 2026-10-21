@@ -5,6 +5,7 @@ import { editorBrowserContributions } from '@core/features/editor/contributions/
 import { integrationsBrowserContributions } from '@core/features/integrations/contributions/browser';
 import { libraryBrowserContributions } from '@core/features/library/contributions/browser';
 import { machinesBrowserContributions } from '@core/features/machines/contributions/browser';
+import { messagingBrowserContributions } from '@core/features/messaging/contributions/browser';
 import { observedSessionsBrowserContributions } from '@core/features/observed-sessions/contributions/browser';
 import { projectsBrowserContributions } from '@core/features/projects/contributions/browser';
 import { settingsBrowserContributions } from '@core/features/settings/contributions/browser';
@@ -16,6 +17,7 @@ import { workbenchBrowserContributions } from '@core/features/workbench/contribu
 export const featureViewRuntimes = [
   ...workbenchBrowserContributions.views,
   ...automationsBrowserContributions.views,
+  ...messagingBrowserContributions.views,
   ...observedSessionsBrowserContributions.views,
   ...projectsBrowserContributions.views,
   ...settingsBrowserContributions.views,

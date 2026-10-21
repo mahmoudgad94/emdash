@@ -1,0 +1,197 @@
+import { EmptyState, Pill } from '@emdash/ui/react/components';
+import { PageLayout } from '@emdash/ui/react/patterns';
+import { Button, SearchInput, Spinner } from '@emdash/ui/react/primitives';
+import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { settingsViewDef } from '@core/features/settings/contributions/views';
+import { Titlebar } from '@core/features/workbench/contributions/browser/Titlebar';
+import {
+  useCurrentViewParams,
+  useNavigate,
+} from '@core/primitives/navigation/browser/navigation-hooks';
+import { defineViewRuntime } from '@core/primitives/views/react';
+import {
+  conversationsQueryOptions,
+  MessagingQueryError,
+  needYouQueryOptions,
+} from '../api/browser/messaging-queries';
+import {
+  filterConversations,
+  findConversation,
+  flattenGroups,
+  groupConversationsByClient,
+} from '../api/conversation-groups';
+import { describeMessagingFailure } from '../api/failure-messages';
+import { channelLabel, connectorBadge } from '../api/labels';
+import { draftsForChannel } from '../api/thread';
+import { messagesViewDef } from '../contributions/views';
+import { ConnectorDot } from './connector-dot';
+import { ConversationList } from './conversation-list';
+import { NeedYouSheet } from './need-you-sheet';
+import { ReplyComposer } from './reply-composer';
+import { ThreadView } from './thread-view';
+
+function failureCode(error: unknown): string {
+  return error instanceof MessagingQueryError ? error.code : 'unknown';
+}
+
+export function MessagesBreadcrumb() {
+  return (
+    <nav aria-label="Breadcrumb" className="flex items-center px-2">
+      <span className="max-w-[14rem] truncate rounded-sm px-1 py-0.5 text-sm text-foreground">
+        Messages
+      </span>
+    </nav>
+  );
+}
+
+function NotAvailable({ code }: { code: string }) {
+  const { navigate } = useNavigate();
+  const failure = describeMessagingFailure(code, 'conversations');
+  return (
+    <EmptyState
+      label={failure.title}
+      description={failure.detail}
+      action={
+        code === 'not_connected' ? (
+          <Button
+            variant="secondary"
+            onClick={() => navigate(settingsViewDef({ tab: 'clientops-core' }))}
+          >
+            Open Client Ops Core settings
+          </Button>
+        ) : undefined
+      }
+    />
+  );
+}
+
+export function MessagesView() {
+  const { params, setParams } = useCurrentViewParams(messagesViewDef);
+  const conversationsQuery = useQuery(conversationsQueryOptions());
+  const needYouQuery = useQuery(needYouQueryOptions());
+  const [search, setSearch] = useState('');
+
+  const all = conversationsQuery.data?.conversations;
+  const groups = useMemo(
+    () => groupConversationsByClient(filterConversations(all ?? [], search)),
+    [all, search]
+  );
+  const everyGroup = useMemo(() => groupConversationsByClient(all ?? []), [all]);
+  // Without a chosen conversation the most recent one of the first client is open.
+  const selected =
+    findConversation(everyGroup, params.conversationId) ?? flattenGroups(everyGroup)[0];
+
+  const drafts = useMemo(
+    () =>
+      selected
+        ? draftsForChannel(needYouQuery.data?.drafts ?? [], {
+            provider: selected.provider,
+            account: selected.source.account,
+            channel: selected.source.channel,
+          })
+        : [],
+    [needYouQuery.data, selected]
+  );
+
+  const waiting = needYouQuery.data?.drafts.length ?? 0;
+  const openNeedYou = () => setParams({ needYou: true });
+  const loadFault = conversationsQuery.isError ? failureCode(conversationsQuery.error) : undefined;
+  const badge = selected ? connectorBadge(selected.connector.state) : undefined;
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden bg-background text-foreground">
+      <div className="h-6 shrink-0 [-webkit-app-region:drag]" />
+      <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-4 px-8 pb-6">
+        <PageLayout.Header
+          title="Messages"
+          description="Client conversations captured by Client Ops Core. Replies are saved as drafts; nothing is sent from here."
+          actions={
+            <Button variant="secondary" size="sm" onClick={openNeedYou}>
+              {waiting > 0 ? `Need you (${waiting})` : 'Need you'}
+            </Button>
+          }
+        />
+        {loadFault !== undefined && all === undefined ? (
+          <NotAvailable code={loadFault} />
+        ) : conversationsQuery.isPending ? (
+          <div className="flex flex-1 items-center justify-center">
+            <Spinner />
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 gap-6">
+            <aside className="flex w-80 shrink-0 flex-col gap-3">
+              <SearchInput
+                aria-label="Search conversations"
+                placeholder="Search client, channel or message…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                onClear={() => setSearch('')}
+              />
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <ConversationList
+                  groups={groups}
+                  selectedId={selected?.id}
+                  onSelect={(id) => setParams({ conversationId: id })}
+                  searching={search.trim() !== ''}
+                />
+                {conversationsQuery.data?.truncated && (
+                  <p className="px-1 pt-2 text-xs text-foreground-muted">
+                    Showing the most recent conversations only.
+                  </p>
+                )}
+              </div>
+            </aside>
+            <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+              {selected ? (
+                <>
+                  <header className="flex shrink-0 items-center gap-2">
+                    <ConnectorDot state={selected.connector.state} />
+                    <h2 className="text-md min-w-0 truncate font-medium text-foreground">
+                      {selected.source.clientName}
+                    </h2>
+                    <span className="min-w-0 truncate text-xs text-foreground-muted">
+                      {channelLabel(selected)}
+                    </span>
+                    {badge && !badge.healthy && (
+                      <Pill variant={badge.tone === 'error' ? 'error' : 'warning'}>
+                        {badge.label}
+                      </Pill>
+                    )}
+                  </header>
+                  <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                    <ThreadView key={selected.id} conversationId={selected.id} drafts={drafts} />
+                  </div>
+                  <ReplyComposer
+                    key={selected.id}
+                    conversation={selected}
+                    onOpenNeedYou={openNeedYou}
+                  />
+                </>
+              ) : (
+                <EmptyState
+                  bare
+                  label="No conversation selected."
+                  description="Pick a conversation to read it and write a reply."
+                />
+              )}
+            </section>
+          </div>
+        )}
+      </div>
+      <NeedYouSheet
+        open={params.needYou === true}
+        onClose={() => setParams({ needYou: undefined })}
+        conversations={all ?? []}
+      />
+    </div>
+  );
+}
+
+export const messagesViewRuntime = defineViewRuntime(messagesViewDef, {
+  slots: {
+    wrap: ({ children }) => <>{children}</>,
+    titlebar: () => <Titlebar leftSlot={<MessagesBreadcrumb />} />,
+    main: () => <MessagesView />,
+  },
+});
