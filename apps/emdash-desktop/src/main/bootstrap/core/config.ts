@@ -36,7 +36,8 @@ const telemetryEnabled = z
   .string()
   .optional()
   .transform((value) => {
-    const normalized = (value ?? 'true').toLowerCase();
+    // Telemetry is off unless the owner turns it on; this build is personal, not a public product.
+    const normalized = (value ?? 'false').toLowerCase();
     return normalized !== 'false' && normalized !== '0' && normalized !== 'no';
   });
 

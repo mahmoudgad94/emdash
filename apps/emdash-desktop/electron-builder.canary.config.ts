@@ -5,8 +5,7 @@ import {
   ARTIFACT_PREFIX,
   LINUX_DESKTOP_ID,
   PRODUCT_NAME,
-  R2_BASE_URL,
-  UPDATE_CHANNEL,
+  RELEASES_REPO,
 } from './src/core/primitives/app-identity/api/app-identity.canary.ts';
 
 const config: Configuration = {
@@ -19,19 +18,9 @@ const config: Configuration = {
   publish: [
     {
       provider: 'github',
-      owner: 'generalaction',
-      repo: 'emdash',
+      owner: RELEASES_REPO.owner,
+      repo: RELEASES_REPO.repo,
       releaseType: 'draft',
-      // 'canary' must match the prerelease identifier in scripts/release/lib/version.ts
-      // (e.g. 1.1.33-canary.42 -> prerelease id "canary"). electron-updater uses this
-      // id to select the matching release from the Atom feed and to construct the
-      // channel filename (canary*.yml) it fetches from GitHub.
-      channel: 'canary',
-    },
-    {
-      provider: 'generic',
-      url: R2_BASE_URL,
-      channel: UPDATE_CHANNEL,
     },
   ],
   generateUpdatesFilesForAllChannels: false,
@@ -62,19 +51,19 @@ const config: Configuration = {
     entitlementsInherit: 'build/entitlements.mac.plist',
     extendInfo: {
       NSMicrophoneUsageDescription:
-        'Emdash needs microphone access for voice dictation and voice mode features.',
+        'Client Ops needs microphone access for voice dictation and voice mode features.',
       NSLocalNetworkUsageDescription:
-        'Emdash needs local network access to connect to SSH hosts on your network.',
+        'Client Ops needs local network access to connect to SSH hosts on your network.',
     },
     target: [
       { target: 'dmg', arch: ['arm64'] },
       { target: 'zip', arch: ['arm64'] },
     ],
-    icon: 'src/assets/images/emdash/emdash-canary.icns',
+    icon: 'src/assets/images/clientops/clientops-canary.icns',
     notarize: false,
   },
   dmg: {
-    icon: 'src/assets/images/emdash/emdash-canary.icns',
+    icon: 'src/assets/images/clientops/clientops-canary.icns',
     background: 'build/dmg-background.tiff',
     window: { width: 530, height: 319 },
     contents: [
@@ -85,7 +74,7 @@ const config: Configuration = {
   linux: {
     category: 'Development',
     executableName: APP_NAME_LOWER,
-    icon: 'src/assets/images/emdash/emdash-canary.png',
+    icon: 'src/assets/images/clientops/clientops-canary.png',
     syncDesktopName: true,
     desktop: {
       entry: { StartupWMClass: PRODUCT_NAME },
@@ -103,17 +92,11 @@ const config: Configuration = {
     packageName: APP_NAME_LOWER,
   },
   win: {
-    icon: 'src/assets/images/emdash/emdash-canary.png',
+    icon: 'src/assets/images/clientops/clientops-canary.png',
     target: [
       { target: 'nsis', arch: ['x64'] },
       { target: 'msi', arch: ['x64'] },
     ],
-    azureSignOptions: {
-      publisherName: 'General Action, Inc.',
-      endpoint: 'https://eus.codesigning.azure.net/',
-      certificateProfileName: 'emdash-public',
-      codeSigningAccountName: 'emdash',
-    },
   },
   msi: {
     oneClick: false,

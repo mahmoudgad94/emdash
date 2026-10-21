@@ -4,8 +4,7 @@ import {
   ARTIFACT_PREFIX,
   LINUX_DESKTOP_ID,
   PRODUCT_NAME,
-  R2_BASE_URL,
-  UPDATE_CHANNEL,
+  RELEASES_REPO,
 } from './src/core/primitives/app-identity/api/app-identity.ts';
 
 const config: Configuration = {
@@ -18,14 +17,9 @@ const config: Configuration = {
   publish: [
     {
       provider: 'github',
-      owner: 'generalaction',
-      repo: 'emdash',
+      owner: RELEASES_REPO.owner,
+      repo: RELEASES_REPO.repo,
       releaseType: 'draft',
-    },
-    {
-      provider: 'generic',
-      url: R2_BASE_URL,
-      channel: UPDATE_CHANNEL,
     },
   ],
   generateUpdatesFilesForAllChannels: false,
@@ -56,19 +50,19 @@ const config: Configuration = {
     entitlementsInherit: 'build/entitlements.mac.plist',
     extendInfo: {
       NSMicrophoneUsageDescription:
-        'Emdash needs microphone access for voice dictation and voice mode features.',
+        'Client Ops needs microphone access for voice dictation and voice mode features.',
       NSLocalNetworkUsageDescription:
-        'Emdash needs local network access to connect to SSH hosts on your network.',
+        'Client Ops needs local network access to connect to SSH hosts on your network.',
     },
     target: [
       { target: 'dmg', arch: ['arm64'] },
       { target: 'zip', arch: ['arm64'] },
     ],
-    icon: 'src/assets/images/emdash/emdash.icns',
+    icon: 'src/assets/images/clientops/clientops.icns',
     notarize: false,
   },
   dmg: {
-    icon: 'src/assets/images/emdash/emdash.icns',
+    icon: 'src/assets/images/clientops/clientops.icns',
     background: 'build/dmg-background.tiff',
     window: { width: 530, height: 319 },
     contents: [
@@ -78,7 +72,7 @@ const config: Configuration = {
   },
   linux: {
     category: 'Development',
-    icon: 'src/assets/images/emdash/emdash.png',
+    icon: 'src/assets/images/clientops/clientops.png',
     syncDesktopName: true,
     desktop: {
       entry: { StartupWMClass: PRODUCT_NAME },
@@ -90,17 +84,11 @@ const config: Configuration = {
     ],
   },
   win: {
-    icon: 'src/assets/images/emdash/emdash.png',
+    icon: 'src/assets/images/clientops/clientops.png',
     target: [
       { target: 'nsis', arch: ['x64'] },
       { target: 'msi', arch: ['x64'] },
     ],
-    azureSignOptions: {
-      publisherName: 'General Action, Inc.',
-      endpoint: 'https://eus.codesigning.azure.net/',
-      certificateProfileName: 'emdash-public',
-      codeSigningAccountName: 'emdash',
-    },
   },
   msi: {
     oneClick: false,

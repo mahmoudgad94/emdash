@@ -7,7 +7,7 @@ describe('loadAppConfig', () => {
 
     expect(config.dbFile).toBeUndefined();
     expect(config.disableNativeDb).toBe(false);
-    expect(config.telemetryEnabled).toBe(true);
+    expect(config.telemetryEnabled).toBe(false);
     expect(config.installSource).toBeUndefined();
     expect(config.forceBootFailure).toBe(false);
   });
@@ -26,6 +26,10 @@ describe('loadAppConfig', () => {
     expect(config.telemetryEnabled).toBe(false);
     expect(config.installSource).toBe('managed');
     expect(config.forceBootFailure).toBe(true);
+  });
+
+  it('enables telemetry only when asked', () => {
+    expect(loadAppConfig({ TELEMETRY_ENABLED: 'true' }).telemetryEnabled).toBe(true);
   });
 
   it.each(['false', '0', 'no', 'NO'])('disables telemetry for %s', (value) => {

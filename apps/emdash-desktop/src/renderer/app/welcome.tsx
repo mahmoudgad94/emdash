@@ -1,7 +1,7 @@
 import { Button } from '@emdash/ui/react/primitives';
 import { motion, type Variants } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import IconLight from '@/assets/images/emdash/icon-light.png';
+import IconLight from '@/assets/images/clientops/icon-light.png';
 import YTBanner from '@/assets/images/ytbanner.webp';
 import { useAppSettingsKey } from '@core/features/settings/api/browser/use-app-settings-key';
 import { confirmCommand } from '@core/features/workbench/contributions/commands';

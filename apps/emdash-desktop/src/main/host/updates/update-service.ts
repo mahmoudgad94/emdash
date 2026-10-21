@@ -5,7 +5,11 @@ import _electronUpdater, {
   type Logger as UpdaterLogger,
 } from 'electron-updater';
 import { updateEvents } from '@core/features/updates/node';
-import { IS_CANARY, UPDATE_CHANNEL } from '@core/primitives/app-identity/api/app-identity';
+import {
+  IS_CANARY,
+  RELEASES_REPO,
+  UPDATE_CHANNEL,
+} from '@core/primitives/app-identity/api/app-identity';
 import { resolveAppVersion } from '@main/core/app/utils';
 import { log } from '@main/lib/logger';
 import { formatUpdaterError, getUpdaterErrorDetails, sanitizeUpdaterLogArgs } from './utils';
@@ -353,7 +357,7 @@ export class UpdateService implements Disposable {
       if (!version) return null;
 
       const response = await fetch(
-        `https://api.github.com/repos/generalaction/emdash/releases/tags/v${version}`
+        `https://api.github.com/repos/${RELEASES_REPO.owner}/${RELEASES_REPO.repo}/releases/tags/v${version}`
       );
 
       if (response.ok) {
