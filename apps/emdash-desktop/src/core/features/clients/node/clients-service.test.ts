@@ -28,7 +28,12 @@ describe('listClients', () => {
       'clients.list': () =>
         ok({
           items: [
-            { id: 'c1', name: 'Acme', agreementKind: 'retainer', status: 'ready' },
+            {
+              id: 'c1',
+              name: 'Acme',
+              agreementKind: 'retainer',
+              status: 'ready',
+            },
             { id: 'c2', name: 'Globex', agreementKind: null },
           ],
           truncated: false,
@@ -64,12 +69,30 @@ describe('listClients', () => {
             id: 'c1',
             name: 'Acme',
             agreement: 'retainer',
+            status: 'active',
+            dashboardRef: null,
+            people: [],
+            channels: [],
             projects: [
-              { id: 'p1', name: 'Site', repos: ['/Users/me/acme/site', 'git@github.com:a/s.git'] },
-              { id: 'p2', name: 'API', repos: [] },
+              {
+                id: 'p1',
+                name: 'Site',
+                repos: ['/Users/me/acme/site', 'git@github.com:a/s.git'],
+                environments: [],
+              },
+              { id: 'p2', name: 'API', repos: [], environments: [] },
             ],
           },
-          { id: 'c2', name: 'Globex', agreement: null, projects: [] },
+          {
+            id: 'c2',
+            name: 'Globex',
+            agreement: null,
+            status: 'active',
+            dashboardRef: null,
+            people: [],
+            channels: [],
+            projects: [],
+          },
         ],
       },
     });
@@ -161,7 +184,9 @@ describe('readClientActivity', () => {
   });
 
   it('passes on Core refusing the summary to an assistant identity', async () => {
-    const { invoker } = core({ 'work.summary': () => failure('policy_denied') });
+    const { invoker } = core({
+      'work.summary': () => failure('policy_denied'),
+    });
     expect(await readClientActivity(invoker)).toMatchObject({
       success: false,
       error: { code: 'policy_denied' },

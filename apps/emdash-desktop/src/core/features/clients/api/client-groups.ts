@@ -46,7 +46,11 @@ export function groupProjectsByClient(
     }))
     .sort((a, b) => a.label.localeCompare(b.label) || a.key.localeCompare(b.key));
   if (own.length > 0) {
-    groups.push({ key: OWN_PROJECTS_GROUP_KEY, label: OWN_PROJECTS_LABEL, projectIds: own });
+    groups.push({
+      key: OWN_PROJECTS_GROUP_KEY,
+      label: OWN_PROJECTS_LABEL,
+      projectIds: own,
+    });
   }
   return groups;
 }

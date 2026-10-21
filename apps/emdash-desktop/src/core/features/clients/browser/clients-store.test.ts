@@ -11,7 +11,10 @@ import {
 
 vi.mock('../api/browser/client', () => ({ getClientsClient: vi.fn() }));
 
-type Project = { id: string; data: { type: 'local' | 'ssh'; path: string } | null };
+type Project = {
+  id: string;
+  data: { type: 'local' | 'ssh'; path: string } | null;
+};
 
 const list: ClientsList = {
   clients: [
@@ -19,8 +22,17 @@ const list: ClientsList = {
       id: 'acme',
       name: 'Acme',
       agreement: 'retainer',
+      status: 'active',
+      dashboardRef: null,
+      people: [],
+      channels: [],
       projects: [
-        { id: 'site', name: 'Site', repos: ['/work/acme/site', 'git@github.com:acme/api.git'] },
+        {
+          id: 'site',
+          name: 'Site',
+          repos: ['/work/acme/site', 'git@github.com:acme/api.git'],
+          environments: [],
+        },
       ],
     },
   ],
@@ -70,7 +82,9 @@ const queryClientOf = (store: ClientsStore) =>
 
 describe('ClientsStore', () => {
   it('groups nothing until Core has reported clients', async () => {
-    const { store, add } = setup({ fetchClients: () => new Promise(() => undefined) });
+    const { store, add } = setup({
+      fetchClients: () => new Promise(() => undefined),
+    });
     add({ id: 'p1', data: { type: 'local', path: '/work/acme/site' } });
     store.start();
     expect(store.groupProjects(['p1'])).toBeUndefined();
@@ -86,7 +100,13 @@ describe('ClientsStore', () => {
     await vi.waitFor(() => expect(store.activeCount('acme')).toBe(2));
 
     expect(store.groupProjects(['p1', 'p2'])).toEqual([
-      { key: 'client:acme', label: 'Acme', clientId: 'acme', projectIds: ['p1'], activeCount: 2 },
+      {
+        key: 'client:acme',
+        label: 'Acme',
+        clientId: 'acme',
+        projectIds: ['p1'],
+        activeCount: 2,
+      },
       { key: 'own', label: 'Your projects', projectIds: ['p2'] },
     ]);
   });
@@ -101,7 +121,10 @@ describe('ClientsStore', () => {
     expect(store.matches.get('other')).toBeUndefined();
 
     runInAction(() => origins.set('other', 'https://github.com/acme/api'));
-    expect(store.matches.get('other')).toMatchObject({ clientId: 'acme', by: 'remote' });
+    expect(store.matches.get('other')).toMatchObject({
+      clientId: 'acme',
+      by: 'remote',
+    });
     expect(store.groupProjects(['placed', 'other'])?.[0]?.projectIds).toEqual(['placed', 'other']);
   });
 
@@ -129,11 +152,15 @@ describe('ClientsStore', () => {
 
     const queryClient = queryClientOf(store);
     failure = new ClientsQueryError('unreachable', 'Core is not reachable');
-    await queryClient.refetchQueries({ queryKey: ['clientops-core', 'clients'] });
+    await queryClient.refetchQueries({
+      queryKey: ['clientops-core', 'clients'],
+    });
     expect(store.clients).toHaveLength(1);
 
     failure = new ClientsQueryError('not_connected', 'Client Ops Core is not set up');
-    await queryClient.refetchQueries({ queryKey: ['clientops-core', 'clients'] });
+    await queryClient.refetchQueries({
+      queryKey: ['clientops-core', 'clients'],
+    });
     await vi.waitFor(() => expect(store.clients).toHaveLength(0));
     expect(store.groupProjects(['p1'])).toBeUndefined();
   });

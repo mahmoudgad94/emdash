@@ -4,9 +4,36 @@ import type { ProjectMatch } from './match-projects';
 import type { Client } from './schemas';
 
 const clients: Client[] = [
-  { id: 'c-b', name: 'Beta Studio', agreement: 'retainer', projects: [] },
-  { id: 'c-a', name: 'acme', agreement: 'per_task', projects: [] },
-  { id: 'c-z', name: 'Zed', agreement: null, projects: [] },
+  {
+    id: 'c-b',
+    name: 'Beta Studio',
+    agreement: 'retainer',
+    projects: [],
+    status: 'active',
+    dashboardRef: null,
+    people: [],
+    channels: [],
+  },
+  {
+    id: 'c-a',
+    name: 'acme',
+    agreement: 'per_task',
+    projects: [],
+    status: 'active',
+    dashboardRef: null,
+    people: [],
+    channels: [],
+  },
+  {
+    id: 'c-z',
+    name: 'Zed',
+    agreement: null,
+    projects: [],
+    status: 'active',
+    dashboardRef: null,
+    people: [],
+    channels: [],
+  },
 ];
 
 const match = (projectId: string, clientId: string): [string, ProjectMatch] => [
@@ -28,7 +55,12 @@ describe('groupProjectsByClient', () => {
     );
     expect(groups).toEqual([
       { key: 'client:c-a', label: 'acme', clientId: 'c-a', projectIds: ['p3'] },
-      { key: 'client:c-b', label: 'Beta Studio', clientId: 'c-b', projectIds: ['p1', 'p4'] },
+      {
+        key: 'client:c-b',
+        label: 'Beta Studio',
+        clientId: 'c-b',
+        projectIds: ['p1', 'p4'],
+      },
       { key: 'own', label: 'Your projects', projectIds: ['p2', 'p5'] },
     ]);
   });

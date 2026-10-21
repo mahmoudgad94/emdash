@@ -18,7 +18,10 @@ import type { Client, ClientActivity, ClientsList } from '../api/schemas';
 export type ClientsProjectSource = {
   readonly projects: ReadonlyMap<
     string,
-    { readonly id: string; readonly data: { type: 'local' | 'ssh'; path: string } | null }
+    {
+      readonly id: string;
+      readonly data: { type: 'local' | 'ssh'; path: string } | null;
+    }
   >;
 };
 

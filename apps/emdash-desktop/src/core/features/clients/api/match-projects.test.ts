@@ -81,7 +81,16 @@ const client = (id: string, repos: string[][]): Client => ({
   id,
   name: id,
   agreement: null,
-  projects: repos.map((r, index) => ({ id: `${id}-p${index}`, name: `${id} ${index}`, repos: r })),
+  status: 'active',
+  dashboardRef: null,
+  people: [],
+  channels: [],
+  projects: repos.map((r, index) => ({
+    id: `${id}-p${index}`,
+    name: `${id} ${index}`,
+    repos: r,
+    environments: [],
+  })),
 });
 
 const project = (
@@ -116,7 +125,10 @@ describe('matchProjectsToClients', () => {
       project('b', '/Users/me/work/./acme/api/../api/'),
     ]);
     expect(matches.get('a')).toMatchObject({ clientId: 'globex', by: 'path' });
-    expect(matches.get('b')).toMatchObject({ clientId: 'acme', clientProjectId: 'acme-p1' });
+    expect(matches.get('b')).toMatchObject({
+      clientId: 'acme',
+      clientProjectId: 'acme-p1',
+    });
   });
 
   it('does not match siblings that merely share a name prefix, nor parents of a registered path', () => {
@@ -142,7 +154,10 @@ describe('matchProjectsToClients', () => {
       project('d', '/Users/me/dev/none', null),
     ]);
     expect(matches.get('a')).toMatchObject({ clientId: 'acme', by: 'remote' });
-    expect(matches.get('b')).toMatchObject({ clientId: 'globex', by: 'remote' });
+    expect(matches.get('b')).toMatchObject({
+      clientId: 'globex',
+      by: 'remote',
+    });
     expect(matches.has('c')).toBe(false);
     expect(matches.has('d')).toBe(false);
   });
@@ -160,7 +175,10 @@ describe('matchProjectsToClients', () => {
       project('ssh-remote', '/srv/site', 'https://github.com/acme/site.git', false),
     ]);
     expect(matches.has('ssh-path')).toBe(false);
-    expect(matches.get('ssh-remote')).toMatchObject({ clientId: 'acme', by: 'remote' });
+    expect(matches.get('ssh-remote')).toMatchObject({
+      clientId: 'acme',
+      by: 'remote',
+    });
   });
 
   it('gives a repository registered twice to the earlier client', () => {

@@ -110,12 +110,19 @@ export function matchProjectsToClients(
       for (const repo of project.repos) {
         const root = normalizeAbsolutePath(repo);
         if (root) {
-          paths.push({ root, clientId: client.id, clientProjectId: project.id });
+          paths.push({
+            root,
+            clientId: client.id,
+            clientProjectId: project.id,
+          });
           continue;
         }
         const remote = normalizeRemoteUrl(repo);
         if (remote && !remotes.has(remote)) {
-          remotes.set(remote, { clientId: client.id, clientProjectId: project.id });
+          remotes.set(remote, {
+            clientId: client.id,
+            clientProjectId: project.id,
+          });
         }
       }
     }
