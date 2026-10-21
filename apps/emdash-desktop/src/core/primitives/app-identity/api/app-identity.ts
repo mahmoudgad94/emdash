@@ -12,7 +12,7 @@ export const USER_DATA_DIR_NAME = isDev
   ? 'clientops-dev'
   : isCanary
     ? 'clientops-canary'
-    : 'clientops';
+    : 'clientops-desktop';
 export const UPDATE_CHANNEL = isCanary ? 'v1-canary' : 'v1-stable';
 export const ARTIFACT_PREFIX = isCanary ? 'clientops-canary' : 'clientops';
 // Releases are published only to the fork's GitHub releases; there is no secondary feed.
