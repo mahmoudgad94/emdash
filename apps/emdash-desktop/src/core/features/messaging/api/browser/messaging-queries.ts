@@ -1,6 +1,7 @@
 import type { QueryObserverOptions } from '@tanstack/react-query';
 import { CLIENT_OPS_QUERY_ROOT } from '@core/features/clientops-core/api';
 import type {
+  Connectors,
   ConversationList,
   ConversationThread,
   CreateDraftInput,
@@ -13,11 +14,13 @@ const ROOT = [...CLIENT_OPS_QUERY_ROOT, 'messaging'] as const;
 
 export const conversationsQueryKey = [...ROOT, 'conversations'] as const;
 export const conversationMessagesQueryKey = (id: string) => [...ROOT, 'messages', id] as const;
+export const connectorsQueryKey = [...ROOT, 'connectors'] as const;
 export const needYouQueryKey = [...ROOT, 'need-you'] as const;
 
 const CONVERSATIONS_REFRESH_MS = 30_000;
 const MESSAGES_REFRESH_MS = 15_000;
 const NEED_YOU_REFRESH_MS = 30_000;
+const CONNECTORS_REFRESH_MS = 30_000;
 // Messages are read live from Core and never stored by the app, so the copy goes soon after the
 // conversation is closed.
 const MESSAGES_GC_MS = 60_000;
@@ -41,6 +44,12 @@ export async function fetchConversations(): Promise<ConversationList> {
 
 export async function fetchConversationMessages(id: string): Promise<ConversationThread> {
   const result = await (await getMessagingClient()).conversation({ id });
+  if (!result.success) throw new MessagingQueryError(result.error.code, result.error.message);
+  return result.data;
+}
+
+export async function fetchConnectors(): Promise<Connectors> {
+  const result = await (await getMessagingClient()).connectors(undefined);
   if (!result.success) throw new MessagingQueryError(result.error.code, result.error.message);
   return result.data;
 }
@@ -114,5 +123,19 @@ export function needYouQueryOptions(
     retry: false,
     refetchOnWindowFocus: false,
     refetchInterval: (query) => (stopsOnDenial(query) ? false : NEED_YOU_REFRESH_MS),
+  };
+}
+
+/** Which providers Core has wired up and how healthy each is; polling stops if Core refuses it. */
+export function connectorsQueryOptions(
+  fetcher: () => Promise<Connectors> = fetchConnectors
+): QueryObserverOptions<Connectors, MessagingQueryError> {
+  return {
+    queryKey: connectorsQueryKey,
+    queryFn: fetcher,
+    staleTime: CONNECTORS_REFRESH_MS,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchInterval: (query) => (stopsOnDenial(query) ? false : CONNECTORS_REFRESH_MS),
   };
 }

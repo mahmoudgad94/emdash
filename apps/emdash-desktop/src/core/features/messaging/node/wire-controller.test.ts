@@ -65,6 +65,16 @@ describe('Messaging Wire controller', () => {
             return ok(action);
           case 'actions.need_you':
             return ok([action]);
+          case 'connectors.status':
+            return ok([
+              {
+                provider: 'whatsapp',
+                account: source.account,
+                state: 'healthy',
+                lastEventAt: null,
+                retryAt: null,
+              },
+            ]);
           default:
             return err({ code: 'not_found', message: tool });
         }
@@ -94,6 +104,14 @@ describe('Messaging Wire controller', () => {
       expect(await wire.client.needYou(undefined)).toMatchObject({
         success: true,
         data: { drafts: [{ id: 'd1' }], truncated: false },
+      });
+      expect(await wire.client.connectors(undefined)).toEqual({
+        success: true,
+        data: {
+          connectors: [
+            { provider: 'whatsapp', account: source.account, state: 'healthy', lastEventAt: null },
+          ],
+        },
       });
       expect(await wire.client.openApprovalApp(undefined)).toEqual({
         success: true,

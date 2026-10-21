@@ -88,6 +88,17 @@ export const needYouSchema = z.object({
   truncated: z.boolean(),
 });
 
+export const providerConnectorSchema = z.object({
+  /** `whatsapp`, `slack` or `gmail`. */
+  provider: z.string(),
+  account: z.string(),
+  /** `healthy`, `catching_up`, `degraded`, `down`, ... as Core reports it. */
+  state: z.string(),
+  lastEventAt: z.string().nullable(),
+});
+
+export const connectorsSchema = z.object({ connectors: z.array(providerConnectorSchema) });
+
 export const conversationsInputSchema = z.object({ clientId: z.string().optional() });
 export const conversationInputSchema = z.object({ id: z.string() });
 
@@ -111,6 +122,8 @@ export type ThreadMessage = z.infer<typeof messageSchema>;
 export type ConversationThread = z.infer<typeof conversationThreadSchema>;
 export type Draft = z.infer<typeof draftSchema>;
 export type NeedYou = z.infer<typeof needYouSchema>;
+export type ProviderConnector = z.infer<typeof providerConnectorSchema>;
+export type Connectors = z.infer<typeof connectorsSchema>;
 export type ConversationsInput = z.infer<typeof conversationsInputSchema>;
 export type CreateDraftInput = z.infer<typeof createDraftInputSchema>;
 export type MessagingError = z.infer<typeof messagingErrorSchema>;

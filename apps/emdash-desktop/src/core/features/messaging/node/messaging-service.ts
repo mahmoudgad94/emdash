@@ -6,6 +6,7 @@ import type {
 } from '@core/features/clientops-core/api/node/core-invoker';
 import { buildDraftPayload, DRAFTABLE_PROVIDERS, normalizeReplyText } from '../api/draft-payload';
 import type {
+  Connectors,
   ConversationList,
   ConversationsInput,
   ConversationSource,
@@ -288,4 +289,29 @@ export async function listNeedYou(core: CoreInvoker): Promise<Result<NeedYou, Co
     cursor = parsed.data.at(-1)!.id;
   }
   return ok({ drafts, truncated: true });
+}
+
+const connectorRowSchema = z.object({
+  provider: z.string(),
+  account: z.string(),
+  state: z.string(),
+  lastEventAt: text,
+});
+
+/** The message providers Core has wired up (WhatsApp, Slack, Gmail) with their health. */
+export async function listConnectors(
+  core: CoreInvoker
+): Promise<Result<Connectors, CoreLinkError>> {
+  const response = await core.invoke('connectors.status', {});
+  if (!response.success) return response;
+  const parsed = z.array(connectorRowSchema).safeParse(response.data);
+  if (!parsed.success) return err(unreadable('connectors.status'));
+  return ok({
+    connectors: parsed.data.map((row) => ({
+      provider: row.provider,
+      account: row.account,
+      state: row.state,
+      lastEventAt: row.lastEventAt ?? null,
+    })),
+  });
 }

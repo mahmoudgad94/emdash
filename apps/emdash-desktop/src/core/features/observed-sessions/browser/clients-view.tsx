@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { observer } from 'mobx-react-lite';
 import { useMemo, useState } from 'react';
 import { clientsQueryOptions } from '@core/features/clients/api/browser/clients-queries';
+import { ClientPage } from '@core/features/clients/contributions/client-page';
 import { settingsViewDef } from '@core/features/settings/contributions/views';
 import { Titlebar } from '@core/features/workbench/contributions/browser/Titlebar';
 import { useSearchFocusHotkeys } from '@core/primitives/keybindings/browser';
@@ -177,6 +178,10 @@ export function ClientsView() {
     (data) => data.items
   );
   const [view] = useState(() => createSessionListView(source));
+  const [tab, setTab] = useState<'overview' | 'sessions'>('overview');
+  const selectedClient =
+    scope?.kind === 'client' ? clients?.find((client) => client.id === scope.clientId) : undefined;
+  const showOverview = selectedClient !== undefined && tab === 'overview';
 
   const total = listQuery.data?.items.length ?? 0;
   const scopeLabel =
@@ -223,52 +228,78 @@ export function ClientsView() {
               <ClientRailList rail={rail} selected={scope ?? OWN_SCOPE} onSelect={select} />
             </aside>
             <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
-              {live.length > 0 && (
-                <div className="flex shrink-0 flex-col gap-1.5">
-                  <ListView.SectionHeader label="Live now" count={live.length} />
-                  <div
-                    style={{
-                      height: Math.min(live.length, LIVE_MAX_ROWS) * LIVE_ROW_PX + 2,
-                    }}
+              {selectedClient !== undefined && (
+                <div className="flex shrink-0 gap-1.5">
+                  <Button
+                    size="sm"
+                    variant={tab === 'overview' ? 'secondary' : 'ghost'}
+                    onClick={() => setTab('overview')}
                   >
-                    <CollectionView
-                      items={live}
-                      getItemKey={(session) => session.id}
-                      columns={LIVE_COLUMNS}
-                      density="compact"
-                      onItemClick={(session) => open(session.id)}
-                    />
-                  </div>
+                    Overview
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={tab === 'sessions' ? 'secondary' : 'ghost'}
+                    onClick={() => setTab('sessions')}
+                  >
+                    Sessions
+                  </Button>
                 </div>
               )}
-              <div className="flex min-h-0 flex-1 flex-col gap-1.5">
-                <h2 className="text-md font-medium text-foreground">{scopeLabel}</h2>
-                <div className="min-h-0 flex-1">
-                  <view.Root>
-                    <CollectionView
-                      view={view}
-                      columns={SESSION_COLUMNS}
-                      density="compact"
-                      toolbar={<SessionsToolbar view={view} total={total} />}
-                      onItemClick={(session: ObservedSession) => open(session.id)}
-                      errorSlot={
-                        listQuery.isError ? (
-                          <EmptyState
-                            bare
-                            label={describeSessionsFailure(failureCode(listQuery.error)).title}
-                            description={
-                              describeSessionsFailure(failureCode(listQuery.error)).detail
-                            }
-                          />
-                        ) : undefined
-                      }
-                      emptySlot={
-                        <EmptySessions view={view} total={total} scope={scope ?? OWN_SCOPE} />
-                      }
-                    />
-                  </view.Root>
+              {showOverview ? (
+                <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                  <ClientPage client={selectedClient} />
                 </div>
-              </div>
+              ) : (
+                <>
+                  {live.length > 0 && (
+                    <div className="flex shrink-0 flex-col gap-1.5">
+                      <ListView.SectionHeader label="Live now" count={live.length} />
+                      <div
+                        style={{
+                          height: Math.min(live.length, LIVE_MAX_ROWS) * LIVE_ROW_PX + 2,
+                        }}
+                      >
+                        <CollectionView
+                          items={live}
+                          getItemKey={(session) => session.id}
+                          columns={LIVE_COLUMNS}
+                          density="compact"
+                          onItemClick={(session) => open(session.id)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex min-h-0 flex-1 flex-col gap-1.5">
+                    <h2 className="text-md font-medium text-foreground">{scopeLabel}</h2>
+                    <div className="min-h-0 flex-1">
+                      <view.Root>
+                        <CollectionView
+                          view={view}
+                          columns={SESSION_COLUMNS}
+                          density="compact"
+                          toolbar={<SessionsToolbar view={view} total={total} />}
+                          onItemClick={(session: ObservedSession) => open(session.id)}
+                          errorSlot={
+                            listQuery.isError ? (
+                              <EmptyState
+                                bare
+                                label={describeSessionsFailure(failureCode(listQuery.error)).title}
+                                description={
+                                  describeSessionsFailure(failureCode(listQuery.error)).detail
+                                }
+                              />
+                            ) : undefined
+                          }
+                          emptySlot={
+                            <EmptySessions view={view} total={total} scope={scope ?? OWN_SCOPE} />
+                          }
+                        />
+                      </view.Root>
+                    </div>
+                  </div>
+                </>
+              )}
             </section>
           </div>
         )}

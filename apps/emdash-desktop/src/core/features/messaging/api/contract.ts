@@ -2,6 +2,7 @@ import { defineContract, fallible } from '@emdash/wire/rpc';
 import { z } from 'zod';
 import {
   approvalAppOpenedSchema,
+  connectorsSchema,
   conversationInputSchema,
   conversationListSchema,
   conversationsInputSchema,
@@ -33,6 +34,12 @@ export const messagingContract = defineContract({
   needYou: fallible({
     input: z.void(),
     data: needYouSchema,
+    error: messagingErrorSchema,
+  }),
+  /** The message providers Core has wired up, with their health. */
+  connectors: fallible({
+    input: z.void(),
+    data: connectorsSchema,
     error: messagingErrorSchema,
   }),
   openApprovalApp: fallible({
