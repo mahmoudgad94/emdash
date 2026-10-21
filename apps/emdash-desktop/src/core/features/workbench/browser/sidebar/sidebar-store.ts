@@ -42,7 +42,25 @@ function isVisibleRegularTask(task: TaskStore): boolean {
   );
 }
 
+/** A labelled run of projects, such as one client's projects. */
+export type SidebarProjectGroup = {
+  key: string;
+  label: string;
+  projectIds: readonly string[];
+  /** Live sessions for the group, shown as a badge when above zero. */
+  activeCount?: number;
+};
+
+/**
+ * Optional source of project groups. It must place every id it is given in exactly one group
+ * and return undefined when there is nothing to group, which keeps the plain project list.
+ */
+export interface SidebarProjectGrouping {
+  groupProjects(orderedProjectIds: readonly string[]): readonly SidebarProjectGroup[] | undefined;
+}
+
 export type SidebarRow =
+  | { kind: 'group'; key: string; label: string; activeCount?: number }
   | { kind: 'project'; projectId: string }
   | { kind: 'task'; projectId: string; taskId: string };
 
@@ -51,20 +69,30 @@ export class SidebarStore {
   private _fallbackState: WorkbenchSidebarState = workbenchSidebarMemento.default;
   private readonly _revealedProjectIds = observable.set<string>();
 
-  constructor(private readonly projectManager: ProjectManagerStore) {
+  constructor(
+    private readonly projectManager: ProjectManagerStore,
+    private readonly grouping?: SidebarProjectGrouping
+  ) {
     // `_handle` must stay observable: computeds reading `state` before the
     // memento handle is attached would otherwise capture zero dependencies
     // and freeze at the fallback value forever.
     makeAutoObservable<
       SidebarStore,
-      '_fallbackState' | '_handle' | '_revealedProjectIds' | 'projectManager'
+      | '_fallbackState'
+      | '_handle'
+      | '_revealedProjectIds'
+      | 'projectManager'
+      | 'grouping'
+      | 'projectSections'
     >(this, {
       _fallbackState: false,
       _handle: observable.ref,
       _revealedProjectIds: false,
       projectManager: false,
+      grouping: false,
       expandedProjectIds: computed.struct,
       sidebarRows: computed,
+      projectSections: computed,
       pinnedSidebarEntries: computed,
     });
   }
@@ -105,25 +133,57 @@ export class SidebarStore {
 
   get sidebarRows(): SidebarRow[] {
     const rows: SidebarRow[] = [];
-    for (const project of this.orderedProjects) {
-      const projectId = project.id;
-      rows.push({ kind: 'project', projectId });
-      const context = asAvailableProject(project);
-      if (this.expandedProjectIds.has(projectId) && context) {
-        const tasks = Array.from(context.get(taskManagerStoreToken).tasks.values()).filter(
-          isVisibleRegularTask
-        );
-        const manualOrder = this.taskOrderByProject[projectId];
-        const ordered = manualOrder?.length
-          ? this.mergeTaskOrder(projectId, tasks)
-          : this.sortTasksForSidebar(tasks);
-        for (const task of ordered) {
-          if (task.data.isPinned) continue;
-          rows.push({ kind: 'task', projectId, taskId: task.data.id });
+    for (const { group, projects } of this.projectSections) {
+      if (group) {
+        rows.push({
+          kind: 'group',
+          key: group.key,
+          label: group.label,
+          ...(group.activeCount ? { activeCount: group.activeCount } : {}),
+        });
+      }
+      for (const project of projects) {
+        const projectId = project.id;
+        rows.push({ kind: 'project', projectId });
+        const context = asAvailableProject(project);
+        if (this.expandedProjectIds.has(projectId) && context) {
+          const tasks = Array.from(context.get(taskManagerStoreToken).tasks.values()).filter(
+            isVisibleRegularTask
+          );
+          const manualOrder = this.taskOrderByProject[projectId];
+          const ordered = manualOrder?.length
+            ? this.mergeTaskOrder(projectId, tasks)
+            : this.sortTasksForSidebar(tasks);
+          for (const task of ordered) {
+            if (task.data.isPinned) continue;
+            rows.push({ kind: 'task', projectId, taskId: task.data.id });
+          }
         }
       }
     }
     return rows;
+  }
+
+  /** The ordered projects, split into the grouping's groups when it offers any. */
+  private get projectSections(): { group?: SidebarProjectGroup; projects: ProjectStore[] }[] {
+    const ordered = this.orderedProjects;
+    const groups = this.grouping?.groupProjects(ordered.map((project) => project.id));
+    if (!groups) return [{ projects: ordered }];
+    const byId = new Map(ordered.map((project) => [project.id, project] as const));
+    const placed = new Set<string>();
+    const sections = groups.map((group) => ({
+      group,
+      projects: group.projectIds.flatMap((id) => {
+        const project = byId.get(id);
+        if (!project || placed.has(id)) return [];
+        placed.add(id);
+        return [project];
+      }),
+    }));
+    // A grouping that misses a project must not hide it: stragglers join the last group.
+    const missed = ordered.filter((project) => !placed.has(project.id));
+    sections.at(-1)?.projects.push(...missed);
+    return sections.filter((section) => section.projects.length > 0);
   }
 
   /** Visible unpinned tasks in the same order they are rendered in the project tree. */

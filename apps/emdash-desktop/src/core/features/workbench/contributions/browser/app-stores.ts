@@ -1,3 +1,4 @@
+import { clientsStoreToken } from '@core/features/clients/contributions/app-store-tokens';
 import { asAvailableProject } from '@core/features/projects/api/browser/stores/project-selectors';
 import { projectManagerStoreToken } from '@core/features/projects/contributions/app-store-tokens';
 import { taskManagerStoreToken } from '@core/features/tasks/contributions/browser/project-store-tokens';
@@ -16,12 +17,13 @@ const sidebarNavigationControllerToken = scopedStoreToken<SidebarNavigationContr
   'workbench.sidebar-navigation'
 );
 
-// SidebarStore resolves the projects store at create time, so the projects
-// contribution must be registered before this one in the app-scope manifest.
+// SidebarStore resolves the projects and clients stores at create time, so those
+// contributions must be registered before this one in the app-scope manifest.
 export const workbenchAppStoreContributions: readonly AppScopedStoreContribution[] = [
   contributeScopedStore({
     token: sidebarStoreToken,
-    create: (_context, stores) => new SidebarStore(stores.get(projectManagerStoreToken)),
+    create: (_context, stores) =>
+      new SidebarStore(stores.get(projectManagerStoreToken), stores.get(clientsStoreToken)),
   }),
   contributeScopedStore({
     token: sidebarNavigationControllerToken,

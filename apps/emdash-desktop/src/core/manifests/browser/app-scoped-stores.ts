@@ -1,3 +1,4 @@
+import { clientsAppStoreContributions } from '@core/features/clients/contributions/app-stores';
 import { machinesAppStoreContributions } from '@core/features/machines/contributions/app-stores';
 import { createProjectsAppStoreContributions } from '@core/features/projects/contributions/app-stores';
 import { sourceControlAppStoreContributions } from '@core/features/source-control/contributions/browser/app-stores';
@@ -10,13 +11,15 @@ import { projectStoreContributions } from './project-scoped-stores';
 
 // Order matters: Tasks and the workbench resolve the Projects store at create time, so Projects
 // must come first. Navigation is registered before the feature slices so their stores can reach it
-// as soon as they are created.
+// as soon as they are created. Clients reads the projects store, so it precedes the workbench sidebar
+// that groups by it.
 export const appStoreContributions: readonly AppScopedStoreContribution[] = [
   ...navigationAppStoreContributions,
   ...createProjectsAppStoreContributions(projectStoreContributions),
   ...sourceControlAppStoreContributions,
   ...taskAppStoreContributions,
   ...machinesAppStoreContributions,
+  ...clientsAppStoreContributions,
   ...workbenchAppStoreContributions,
   ...updateAppStoreContributions,
 ];

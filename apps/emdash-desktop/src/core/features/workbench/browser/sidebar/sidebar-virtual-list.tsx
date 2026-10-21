@@ -34,6 +34,7 @@ import {
   useViewParams,
   useWorkspaceSlots,
 } from '@core/primitives/navigation/browser/navigation-hooks';
+import { SidebarGroupHeader } from './group-header';
 import { SidebarProjectItem } from './project-item';
 import { SidebarTaskItem } from './task-item';
 
@@ -61,7 +62,10 @@ export const SidebarVirtualList = observer(function SidebarVirtualList() {
     currentView === 'task' && taskParams.projectId
       ? getSidebarStore().expandedProjectIds.has(taskParams.projectId)
       : null;
-  const allDndIds = useMemo(() => rows.map(rowToDndId), [rows]);
+  const allDndIds = useMemo(
+    () => rows.filter((row) => row.kind !== 'group').map(rowToDndId),
+    [rows]
+  );
 
   const virtualizer = useVirtualizer({
     count: rows.length,
@@ -163,9 +167,10 @@ export const SidebarVirtualList = observer(function SidebarVirtualList() {
       const overRowIdx = rows.findIndex((r) => rowToDndId(r) === String(over.id));
       if (overRowIdx === -1) return;
       const insertionRowIdx = isAbove ? overRowIdx : overRowIdx + 1;
-      const ids = getSidebarStore()
-        .orderedProjects.map((p) => (p.state === 'unregistered' ? p.id : (p.data?.id ?? '')))
-        .filter(Boolean);
+      // Group headers can reorder the rows, so the new order is built from what is shown.
+      const ids = rows
+        .filter((r): r is Extract<SidebarRow, { kind: 'project' }> => r.kind === 'project')
+        .map((r) => r.projectId);
       const oldIdx = ids.indexOf(aParsed.projectId);
       if (oldIdx === -1) return;
       const projectsAbove = rows
@@ -218,6 +223,13 @@ export const SidebarVirtualList = observer(function SidebarVirtualList() {
                 width: '100%',
                 height: `${vItem.size}px`,
               };
+              if (row.kind === 'group') {
+                return (
+                  <div key={dndId} style={vStyle}>
+                    <SidebarGroupHeader label={row.label} activeCount={row.activeCount} />
+                  </div>
+                );
+              }
               if (row.kind === 'project') {
                 return (
                   <SortableRow key={row.projectId} dndId={dndId} style={vStyle}>
@@ -250,6 +262,7 @@ type SidebarDndId =
   | { kind: 'task'; projectId: string; taskId: string };
 
 function rowToDndId(row: SidebarRow): string {
+  if (row.kind === 'group') return `group::${row.key}`;
   if (row.kind === 'project') return toProjectDndId(row.projectId);
   return toTaskDndId(row.projectId, row.taskId);
 }

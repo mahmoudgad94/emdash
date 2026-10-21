@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { taskManagerStoreToken } from '@core/features/tasks/contributions/browser/project-store-tokens';
 import type { WorkbenchSidebarState } from '@core/features/workbench/contributions/mementos';
 import type { MementoHandle } from '@core/primitives/mementos/browser';
-import { SidebarStore } from './sidebar-store';
+import { SidebarStore, type SidebarProjectGrouping } from './sidebar-store';
 
 type SidebarProjectManager = ConstructorParameters<typeof SidebarStore>[0];
 
@@ -244,5 +244,85 @@ describe('SidebarStore project ordering', () => {
     ]);
     expect(store.visibleTaskIdsForProject('project-1')).toEqual([]);
     expect(store.sidebarRows).toEqual([{ kind: 'project', projectId: 'project-1' }]);
+  });
+
+  describe('project grouping', () => {
+    const three = () =>
+      projectManager([
+        { id: 'a', createdAt: '2026-01-03T00:00:00.000Z' },
+        { id: 'b', createdAt: '2026-01-02T00:00:00.000Z' },
+        { id: 'c', createdAt: '2026-01-01T00:00:00.000Z' },
+      ]);
+
+    it('keeps the plain project list when the grouping offers no groups', () => {
+      const grouping: SidebarProjectGrouping = { groupProjects: () => undefined };
+      expect(new SidebarStore(three(), grouping).sidebarRows).toEqual(
+        new SidebarStore(three()).sidebarRows
+      );
+    });
+
+    it('puts a header row above each group and orders projects group by group', () => {
+      const groupProjects = vi.fn((ids: readonly string[]) => [
+        { key: 'client:acme', label: 'Acme', projectIds: ['c', 'a'], activeCount: 2 },
+        { key: 'own', label: 'Your projects', projectIds: ids.filter((id) => id === 'b') },
+      ]);
+      const store = new SidebarStore(three(), { groupProjects });
+
+      expect(store.sidebarRows).toEqual([
+        { kind: 'group', key: 'client:acme', label: 'Acme', activeCount: 2 },
+        { kind: 'project', projectId: 'c' },
+        { kind: 'project', projectId: 'a' },
+        { kind: 'group', key: 'own', label: 'Your projects' },
+        { kind: 'project', projectId: 'b' },
+      ]);
+      // The grouping sees the projects in their saved order, newest first by default.
+      expect(groupProjects).toHaveBeenCalledWith(['a', 'b', 'c']);
+    });
+
+    it('never hides a project the grouping forgot, and skips groups that end up empty', () => {
+      const store = new SidebarStore(three(), {
+        groupProjects: () => [
+          { key: 'empty', label: 'Nobody', projectIds: ['gone'] },
+          { key: 'client:acme', label: 'Acme', projectIds: ['a'] },
+        ],
+      });
+
+      expect(store.sidebarRows).toEqual([
+        { kind: 'group', key: 'client:acme', label: 'Acme' },
+        { kind: 'project', projectId: 'a' },
+        { kind: 'project', projectId: 'b' },
+        { kind: 'project', projectId: 'c' },
+      ]);
+    });
+
+    it('lists each project once even if two groups claim it', () => {
+      const store = new SidebarStore(three(), {
+        groupProjects: () => [
+          { key: 'one', label: 'One', projectIds: ['a', 'b'] },
+          { key: 'two', label: 'Two', projectIds: ['b', 'c'] },
+        ],
+      });
+
+      expect(
+        store.sidebarRows.filter((row) => row.kind === 'project').map((row) => row.projectId)
+      ).toEqual(['a', 'b', 'c']);
+    });
+
+    it('does not change task entries or pinned entries', () => {
+      const store = new SidebarStore(
+        projectManagerWithTasks([
+          { id: 'a', createdAt: '2026-01-02T00:00:00.000Z', taskIds: ['a1'] },
+          { id: 'b', createdAt: '2026-01-01T00:00:00.000Z', taskIds: ['b1'] },
+        ]),
+        { groupProjects: () => [{ key: 'g', label: 'G', projectIds: ['b', 'a'] }] }
+      );
+      store.toggleProjectExpanded('a');
+      store.toggleProjectExpanded('b');
+
+      expect(store.visibleTaskEntries).toEqual([
+        { projectId: 'b', taskId: 'b1' },
+        { projectId: 'a', taskId: 'a1' },
+      ]);
+    });
   });
 });
