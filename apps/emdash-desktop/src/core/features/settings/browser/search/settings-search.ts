@@ -223,6 +223,14 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
     keywords: ['limits', 'quota', 'subscription', 'account', 'codex', 'claude', 'reset'],
   },
 
+  {
+    id: 'clientops-core',
+    label: 'Client Ops Core',
+    tab: 'clientops-core',
+    description: 'Connect to Client Ops Core to group projects under your clients.',
+    keywords: ['clients', 'enroll', 'enrollment', 'identity', 'core', 'certificate'],
+  },
+
   // System
   {
     id: 'system',

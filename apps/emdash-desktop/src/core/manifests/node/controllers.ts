@@ -20,6 +20,8 @@ import {
   type BrowserOperations,
 } from '@core/features/browser/node/wire-controller';
 import { createCatalogWireController } from '@core/features/catalog/node/wire-controller';
+import type { CoreLink } from '@core/features/clientops-core/node/core-link';
+import { createClientOpsCoreWireController } from '@core/features/clientops-core/node/wire-controller';
 import type { CompensationRunner } from '@core/features/conversations/node/createConversation';
 import { createConversationsWireController } from '@core/features/conversations/node/wire-controller';
 import {
@@ -125,6 +127,7 @@ export type DesktopControllerContext = {
   readonly appSettings: AppSettingsService;
   readonly automations: AutomationsService;
   readonly browserOperations: BrowserOperations;
+  readonly clientOpsCore: CoreLink;
   readonly compensation: CompensationRunner;
   readonly db: AppDb;
   readonly devPerfOperations: DevPerfOperations;
@@ -203,6 +206,12 @@ export const desktopNodeControllers = {
   appSettings: {
     create: ({ appSettings, settingsRuntime }) =>
       createAppSettingsWireController(appSettings, settingsRuntime),
+  },
+  clientOpsCore: {
+    create: ({ clientOpsCore, scope }) => {
+      scope.add(() => clientOpsCore.dispose());
+      return createClientOpsCoreWireController(clientOpsCore);
+    },
   },
   devPerf: {
     create: ({ devPerfOperations, logger }) =>

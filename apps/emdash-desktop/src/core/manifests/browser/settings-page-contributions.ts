@@ -1,3 +1,4 @@
+import { clientOpsCoreSettingsPage } from '@core/features/clientops-core/contributions/settings-page';
 import { promptsSettingsPage } from '@core/features/library/contributions/settings-page';
 import {
   conversationsSettingsPage,
@@ -27,6 +28,7 @@ export const settingsPageContributions = [
   repositorySettingsPage,
   promptsSettingsPage,
   usageSettingsPage,
+  clientOpsCoreSettingsPage,
   systemSettingsPage,
   localWorkspacesSettingsPage,
   conversationsSettingsPage,

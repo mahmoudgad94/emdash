@@ -1,5 +1,7 @@
+import { app } from 'electron';
 import { providerTokenRegistry } from '@core/features/account/api/node/provider-token-registry';
 import type { EmdashAccountService } from '@core/features/account/node/services/emdash-account-service';
+import { createCoreLink } from '@core/features/clientops-core/node/core-link';
 import { GitHubAuthServerAdapter } from '@core/features/github/node/accounts/github-auth-server-adapter';
 import { getIntegrationConnectionService } from '@core/features/integrations/node/integration-connection-service';
 import { provisionWorkspaceErrorToWorkspaceError } from '@core/features/workspaces/node/wire-controller';
@@ -66,6 +68,7 @@ export function createDesktopWireOptions(
     appSettings: database.appSettings,
     automations: services.automations,
     browserOperations,
+    clientOpsCore: createCoreLink({ userDataDir: app.getPath('userData'), logger: log }),
     compensation: withCompensation,
     db: database.db,
     devPerfOperations: createDevPerfOperations(runtimes),
