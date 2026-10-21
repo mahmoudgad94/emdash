@@ -107,9 +107,11 @@ export function MessagesView() {
           title="Messages"
           description="Client conversations captured by Client Ops Core. Replies are saved as drafts; nothing is sent from here."
           actions={
-            <Button variant="secondary" size="sm" onClick={openNeedYou}>
-              {waiting > 0 ? `Need you (${waiting})` : 'Need you'}
-            </Button>
+            <div className="flex justify-end">
+              <Button variant="secondary" size="sm" onClick={openNeedYou}>
+                {waiting > 0 ? `Need you (${waiting})` : 'Need you'}
+              </Button>
+            </div>
           }
         />
         {loadFault !== undefined && all === undefined ? (
