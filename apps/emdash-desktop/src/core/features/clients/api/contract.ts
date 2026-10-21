@@ -7,6 +7,7 @@ import {
   clientWorkInputSchema,
   clientWorkSchema,
   repoInspectionInputSchema,
+  unlinkedClientsSchema,
   repoInspectionListSchema,
 } from './schemas';
 
@@ -27,6 +28,12 @@ export const clientsContract = defineContract({
   work: fallible({
     input: clientWorkInputSchema,
     data: clientWorkSchema,
+    error: clientsErrorSchema,
+  }),
+  /** Active dashboard clients that are not set up in Core yet. */
+  unlinked: fallible({
+    input: z.void(),
+    data: unlinkedClientsSchema,
     error: clientsErrorSchema,
   }),
   /** Which registered repositories are URLs, and which paths exist on this machine. */

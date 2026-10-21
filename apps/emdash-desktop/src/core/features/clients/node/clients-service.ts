@@ -17,6 +17,7 @@ import type {
   ClientWorkItem,
   RepoInspection,
   RepoInspectionList,
+  UnlinkedClients,
 } from '../api/schemas';
 
 const MAX_PAGES = 10;
@@ -312,4 +313,36 @@ export async function inspectRepos(
     }
   );
   return ok({ repos: inspected });
+}
+
+const dashboardClientsSchema = z.object({
+  items: z.array(z.object({ ref: z.string(), label: z.string(), state: z.string().nullable() })),
+  asOf: z.string().nullable(),
+  stale: z.boolean(),
+});
+
+/**
+ * Active clients on the dashboard that no Core client is bound to. These are real clients the
+ * owner works for that Core does not know yet, so they are listed rather than hidden.
+ */
+export async function readUnlinkedClients(
+  core: CoreInvoker
+): Promise<Result<UnlinkedClients, CoreLinkError>> {
+  const clients = await listClients(core);
+  if (!clients.success) return clients;
+  const response = await core.invoke('dashboard.read', { kind: 'clients' });
+  if (!response.success) return response;
+  const parsed = dashboardClientsSchema.safeParse(response.data);
+  if (!parsed.success) return err(unreadable('dashboard.read'));
+  const bound = new Set(
+    clients.data.clients.flatMap((c) => (c.dashboardRef ? [c.dashboardRef] : []))
+  );
+  return ok({
+    clients: parsed.data.items
+      .filter((item) => item.state === 'active' && !bound.has(item.ref))
+      .map((item) => ({ ref: item.ref, name: item.label }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    asOf: parsed.data.asOf,
+    stale: parsed.data.stale,
+  });
 }

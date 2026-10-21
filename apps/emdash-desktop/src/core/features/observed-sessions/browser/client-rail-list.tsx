@@ -78,17 +78,52 @@ export function ClientRailList({
   rail,
   selected,
   onSelect,
+  unlinked = [],
+  hiddenCount = 0,
+  showInactive = false,
+  onToggleInactive,
 }: {
   rail: ClientRail;
   selected: SessionScope;
   onSelect: (scope: SessionScope) => void;
+  /** Active dashboard clients Core has no client for yet. */
+  unlinked?: readonly { ref: string; name: string }[];
+  /** Clients left out because they are not active. */
+  hiddenCount?: number;
+  showInactive?: boolean;
+  onToggleInactive?: () => void;
 }) {
   return (
     <nav aria-label="Clients" className="flex flex-col gap-3">
       {rail.clients.length > 0 && (
         <RailGroup entries={rail.clients} selected={selected} onSelect={onSelect} />
       )}
+      {(hiddenCount > 0 || showInactive) && onToggleInactive && (
+        <button
+          type="button"
+          className="px-1 text-left text-xs text-foreground-muted hover:text-foreground"
+          onClick={onToggleInactive}
+        >
+          {showInactive ? 'Hide inactive clients' : `Show ${hiddenCount} inactive`}
+        </button>
+      )}
       <RailGroup entries={[rail.own, rail.unmatched]} selected={selected} onSelect={onSelect} />
+      {unlinked.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <ListView.SectionHeader label="Not set up in Core" count={unlinked.length} />
+          <ul className="overflow-hidden rounded-lg border border-border bg-background-1">
+            {unlinked.map((client) => (
+              <li
+                key={client.ref}
+                className="border-border-subtle truncate border-b px-3 py-1.5 text-xs text-foreground-muted last:border-b-0"
+                title="Active on your dashboard, but not set up in Client Ops Core yet"
+              >
+                {client.name}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </nav>
   );
 }

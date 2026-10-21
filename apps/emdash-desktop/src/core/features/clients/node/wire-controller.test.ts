@@ -19,6 +19,17 @@ describe('Clients Wire controller', () => {
           });
         if (tool === 'dashboard.read') {
           const { kind } = input as { kind: string };
+          if (kind === 'clients')
+            return ok({
+              items: [
+                { ref: 'cl-1', label: 'Acme', state: 'active' },
+                { ref: 'cl-9', label: 'Zed Ltd', state: 'active' },
+                { ref: 'cl-7', label: 'Old Co', state: 'ended' },
+              ],
+              truncated: false,
+              asOf: '2026-01-03T00:00:00.000Z',
+              stale: false,
+            });
           return ok({
             items:
               kind === 'payments'
@@ -73,6 +84,14 @@ describe('Clients Wire controller', () => {
       expect(await wire.client.activity(undefined)).toEqual({
         success: true,
         data: { activeNow: 1, byClient: { c1: 1 } },
+      });
+      expect(await wire.client.unlinked(undefined)).toEqual({
+        success: true,
+        data: {
+          clients: [{ ref: 'cl-9', name: 'Zed Ltd' }],
+          asOf: '2026-01-03T00:00:00.000Z',
+          stale: false,
+        },
       });
       expect(await wire.client.work({ clientId: 'c1' })).toEqual({
         success: true,

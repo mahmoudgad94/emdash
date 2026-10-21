@@ -11,7 +11,11 @@ import { Button } from '@emdash/ui/react/primitives';
 import { useQuery } from '@tanstack/react-query';
 import { observer } from 'mobx-react-lite';
 import { useMemo, useState } from 'react';
-import { clientsQueryOptions } from '@core/features/clients/api/browser/clients-queries';
+import { activeClients, hiddenClientCount } from '@core/features/clients/api/active-clients';
+import {
+  clientsQueryOptions,
+  unlinkedClientsQueryOptions,
+} from '@core/features/clients/api/browser/clients-queries';
 import { ClientPage } from '@core/features/clients/contributions/client-page';
 import { settingsViewDef } from '@core/features/settings/contributions/views';
 import { Titlebar } from '@core/features/workbench/contributions/browser/Titlebar';
@@ -145,8 +149,14 @@ export function ClientsView() {
   const { params, setParams } = useCurrentViewParams(clientsViewDef);
   const clientsQuery = useQuery(clientsQueryOptions());
   const summaryQuery = useQuery(workSummaryQueryOptions());
+  const unlinkedQuery = useQuery(unlinkedClientsQueryOptions());
+  const [showInactive, setShowInactive] = useState(false);
 
-  const clients = clientsQuery.data?.clients;
+  const allClients = clientsQuery.data?.clients;
+  const clients = useMemo(
+    () => (allClients === undefined || showInactive ? allClients : activeClients(allClients)),
+    [allClients, showInactive]
+  );
   const summary = summaryQuery.data;
   const rail = useMemo(() => buildClientRail(clients ?? [], summary), [clients, summary]);
   const clientNames = useMemo(() => {
@@ -225,7 +235,15 @@ export function ClientsView() {
         ) : (
           <div className="flex min-h-0 flex-1 gap-6">
             <aside className="w-64 shrink-0 overflow-y-auto">
-              <ClientRailList rail={rail} selected={scope ?? OWN_SCOPE} onSelect={select} />
+              <ClientRailList
+                rail={rail}
+                selected={scope ?? OWN_SCOPE}
+                onSelect={select}
+                unlinked={unlinkedQuery.data?.clients}
+                hiddenCount={allClients === undefined ? 0 : hiddenClientCount(allClients)}
+                showInactive={showInactive}
+                onToggleInactive={() => setShowInactive((value) => !value)}
+              />
             </aside>
             <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
               {selectedClient !== undefined && (

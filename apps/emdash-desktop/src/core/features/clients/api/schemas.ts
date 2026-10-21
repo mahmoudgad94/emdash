@@ -96,6 +96,15 @@ export const repoInspectionListSchema = z.object({
   repos: z.array(repoInspectionSchema),
 });
 
+export const unlinkedClientSchema = z.object({ ref: z.string(), name: z.string() });
+
+export const unlinkedClientsSchema = z.object({
+  /** Active dashboard clients that no Core client is bound to yet. */
+  clients: z.array(unlinkedClientSchema),
+  asOf: z.string().nullable(),
+  stale: z.boolean(),
+});
+
 export const clientsErrorSchema = z.object({
   code: z.string(),
   message: z.string(),
@@ -115,3 +124,5 @@ export type RepoInspectionInput = z.infer<typeof repoInspectionInputSchema>;
 export type RepoInspection = z.infer<typeof repoInspectionSchema>;
 export type RepoInspectionList = z.infer<typeof repoInspectionListSchema>;
 export type ClientsError = z.infer<typeof clientsErrorSchema>;
+export type UnlinkedClient = z.infer<typeof unlinkedClientSchema>;
+export type UnlinkedClients = z.infer<typeof unlinkedClientsSchema>;

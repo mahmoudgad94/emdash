@@ -6,6 +6,7 @@ import {
   listClients,
   readClientActivity,
   readClientWork,
+  readUnlinkedClients,
   type DirectoryCheck,
 } from './clients-service';
 
@@ -17,6 +18,7 @@ export function createClientsWireController(
     list: () => listClients(core),
     activity: () => readClientActivity(core),
     work: ({ clientId }) => readClientWork(core, clientId),
+    unlinked: () => readUnlinkedClients(core),
     inspectRepos: ({ repos }) => inspectRepos(repos, exists),
   });
 }

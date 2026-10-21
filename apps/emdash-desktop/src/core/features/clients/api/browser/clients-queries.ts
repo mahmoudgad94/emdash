@@ -1,6 +1,12 @@
 import type { QueryObserverOptions } from '@tanstack/react-query';
 import { CLIENT_OPS_QUERY_ROOT } from '@core/features/clientops-core/api';
-import type { ClientActivity, ClientsList, ClientWork, RepoInspectionList } from '../schemas';
+import type {
+  ClientActivity,
+  ClientsList,
+  ClientWork,
+  RepoInspectionList,
+  UnlinkedClients,
+} from '../schemas';
 import { getClientsClient } from './client';
 
 export const clientsQueryKey = [...CLIENT_OPS_QUERY_ROOT, 'clients'] as const;
@@ -110,5 +116,28 @@ export function repoInspectionQueryOptions(
     staleTime: 30_000,
     retry: false,
     refetchOnWindowFocus: true,
+  };
+}
+
+export const unlinkedClientsQueryKey = [...CLIENT_OPS_QUERY_ROOT, 'unlinked-clients'] as const;
+
+export async function fetchUnlinkedClients(): Promise<UnlinkedClients> {
+  const result = await (await getClientsClient()).unlinked(undefined);
+  if (!result.success) throw new ClientsQueryError(result.error.code, result.error.message);
+  return result.data;
+}
+
+/** Active dashboard clients Core has no client for yet. */
+export function unlinkedClientsQueryOptions(): QueryObserverOptions<
+  UnlinkedClients,
+  ClientsQueryError
+> {
+  return {
+    queryKey: unlinkedClientsQueryKey,
+    queryFn: fetchUnlinkedClients,
+    staleTime: WORK_REFRESH_MS / 2,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchInterval: WORK_REFRESH_MS,
   };
 }
