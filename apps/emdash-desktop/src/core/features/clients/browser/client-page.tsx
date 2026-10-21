@@ -117,6 +117,79 @@ const RepoRow = observer(function RepoRow({
   );
 });
 
+const COLLAPSED_REPOS = 4;
+
+/** One machine's repositories: a short list that expands, and one click to open them all. */
+const RepoGroupBlock = observer(function RepoGroupBlock({
+  group,
+  clientName,
+}: {
+  group: RepoGroup;
+  clientName: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const addable = group.host.kind === 'local' || group.host.kind === 'ssh';
+  const pending = group.repos.filter((repo) => repo.projectId === null);
+  const shown = expanded ? group.repos : group.repos.slice(0, COLLAPSED_REPOS);
+
+  const addAll = async () => {
+    setBusy(true);
+    let failed = 0;
+    try {
+      for (const repo of pending) {
+        const type =
+          repo.host.kind === 'ssh'
+            ? ({ type: 'ssh', connectionId: repo.host.connectionId } as const)
+            : ({ type: 'local' } as const);
+        const id = await getProjectManagerStore().createProject(type, {
+          mode: 'pick',
+          name: repoBasename(repo.repo),
+          path: repo.repo,
+        });
+        if (id === undefined) failed += 1;
+      }
+      if (failed > 0) toast.error(`${failed} of ${pending.length} projects could not be added`);
+      else toast.success(`Added ${pending.length} projects`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 pr-3">
+        <div className="min-w-0 flex-1">
+          <ListView.SectionHeader label={group.label} count={group.repos.length} />
+        </div>
+        {addable && pending.length > 0 && (
+          <Button variant="secondary" size="sm" disabled={busy} onClick={addAll}>
+            {busy ? 'Adding…' : `Add all (${pending.length})`}
+          </Button>
+        )}
+      </div>
+      {shown.map((repo, index) => (
+        <RepoRow
+          key={repo.repo}
+          repo={repo}
+          group={group}
+          clientName={clientName}
+          isLast={index === shown.length - 1 && group.repos.length <= COLLAPSED_REPOS}
+        />
+      ))}
+      {group.repos.length > COLLAPSED_REPOS && (
+        <button
+          type="button"
+          className="w-full px-3 py-2 text-left text-xs text-foreground-muted hover:text-foreground"
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? 'Show fewer' : `Show ${group.repos.length - COLLAPSED_REPOS} more`}
+        </button>
+      )}
+    </div>
+  );
+});
+
 const ProjectsSection = observer(function ProjectsSection({ client }: { client: Client }) {
   const repos = useMemo(
     () => [...new Set(client.projects.flatMap((project) => project.repos))],
@@ -158,18 +231,7 @@ const ProjectsSection = observer(function ProjectsSection({ client }: { client: 
         <Muted>Could not tell where these repositories live.</Muted>
       ) : (
         groups.map((group) => (
-          <div key={group.key}>
-            <ListView.SectionHeader label={group.label} count={group.repos.length} />
-            {group.repos.map((repo, index) => (
-              <RepoRow
-                key={repo.repo}
-                repo={repo}
-                group={group}
-                clientName={client.name}
-                isLast={index === group.repos.length - 1}
-              />
-            ))}
-          </div>
+          <RepoGroupBlock key={group.key} group={group} clientName={client.name} />
         ))
       )}
     </Section>
