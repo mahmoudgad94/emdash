@@ -45,8 +45,15 @@ import { SessionTranscriptSheet } from './session-transcript-sheet';
 const LIVE_ROW_PX = 36;
 const LIVE_MAX_ROWS = 5;
 
+/**
+ * The code behind a failed query. The clients and sessions slices throw their own error classes,
+ * so the code is read off any error that carries one rather than by instance.
+ */
 function failureCode(error: unknown): string {
-  return error instanceof ObservedSessionsQueryError ? error.code : 'unknown';
+  if (error instanceof ObservedSessionsQueryError) return error.code;
+  const code = (error as { code?: unknown } | null)?.code;
+  if (typeof code !== 'string') return 'unknown';
+  return code === 'unconfigured' ? 'not_connected' : code;
 }
 
 export function ClientsBreadcrumb() {
@@ -194,12 +201,11 @@ export function ClientsView() {
     setParams({ ...scopeToParams(next), sessionId: undefined });
   const open = (id: string) => setParams({ sessionId: id });
 
-  const connectionFault =
-    clientsQuery.isError && summaryQuery.isError
-      ? [clientsQuery.error, summaryQuery.error]
-          .map(failureCode)
-          .find((code) => code === 'not_connected' || code === 'policy_denied')
-      : undefined;
+  // Either query refusing for a connection reason means the whole view cannot work yet.
+  const connectionFault = [clientsQuery.error, summaryQuery.error]
+    .filter((error) => error !== null && error !== undefined)
+    .map(failureCode)
+    .find((code) => code === 'not_connected' || code === 'policy_denied');
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background text-foreground">
