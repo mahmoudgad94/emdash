@@ -1,8 +1,9 @@
 import { EmptyState, Pill } from '@emdash/ui/react/components';
 import { PageLayout } from '@emdash/ui/react/patterns';
 import { Button, SearchInput, Spinner } from '@emdash/ui/react/primitives';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { clientsQueryOptions } from '@core/features/clients/api/browser/clients-queries';
 import { settingsViewDef } from '@core/features/settings/contributions/views';
 import { Titlebar } from '@core/features/workbench/contributions/browser/Titlebar';
 import { SubjectProvider } from '@core/primitives/mementos/react';
@@ -12,10 +13,17 @@ import {
 } from '@core/primitives/navigation/browser/navigation-hooks';
 import { defineViewRuntime } from '@core/primitives/views/react';
 import {
+  connectorsQueryOptions,
   conversationsQueryOptions,
+  fetchHistory,
   MessagingQueryError,
   needYouQueryOptions,
 } from '../api/browser/messaging-queries';
+import {
+  clientWhatsAppChannels,
+  isLocalConversation,
+  localClientConversations,
+} from '../api/client-chats';
 import {
   filterConversations,
   findConversation,
@@ -25,6 +33,7 @@ import {
 } from '../api/conversation-groups';
 import { describeMessagingFailure } from '../api/failure-messages';
 import { channelLabel, connectorBadge } from '../api/labels';
+import type { HistoryMessage } from '../api/schemas';
 import { draftsForChannel } from '../api/thread';
 import { clientThreadSubject } from '../contributions/subject';
 import { messagesViewDef } from '../contributions/views';
@@ -76,9 +85,51 @@ export function MessagesView() {
   const conversationsQuery = useQuery(conversationsQueryOptions());
   const needYouQuery = useQuery(needYouQueryOptions());
   const [search, setSearch] = useState('');
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(true);
 
-  const all = conversationsQuery.data?.conversations;
+  const clientsQuery = useQuery(clientsQueryOptions());
+  const connectorsQuery = useQuery(connectorsQueryOptions());
+  // Client chats Core has no messages for yet still belong in the list, read from WhatsApp history.
+  const clientChannels = useMemo(
+    () => clientWhatsAppChannels(clientsQuery.data?.clients ?? []),
+    [clientsQuery.data]
+  );
+  const lastMessages = useQueries({
+    queries: clientChannels.map(({ channel }) => ({
+      queryKey: ['clientops', 'messaging', 'history', 'last', channel.channel] as const,
+      queryFn: () => fetchHistory({ channel: channel.channel, limit: 1 }),
+      staleTime: 60_000,
+      retry: false,
+      refetchOnWindowFocus: false,
+    })),
+    combine: (results) => results.map((result) => result.data?.messages.at(-1)),
+  });
+  const lastByChannel = useMemo(() => {
+    const map = new Map<string, HistoryMessage>();
+    clientChannels.forEach(({ channel }, index) => {
+      const last = lastMessages[index];
+      if (last) map.set(channel.channel, last);
+    });
+    return map;
+  }, [clientChannels, lastMessages]);
+  const captured = conversationsQuery.data?.conversations;
+  const whatsappState =
+    connectorsQuery.data?.connectors.find((c) => c.provider === 'whatsapp')?.state ?? null;
+  const all = useMemo(
+    () =>
+      captured === undefined
+        ? undefined
+        : [
+            ...captured,
+            ...localClientConversations(
+              clientsQuery.data?.clients ?? [],
+              captured,
+              lastByChannel,
+              whatsappState
+            ),
+          ],
+    [captured, clientsQuery.data, lastByChannel, whatsappState]
+  );
   const waitingDrafts = needYouQuery.data?.drafts;
   // What needs the owner: accepted messages nobody has triaged, or a draft waiting for approval.
   const attention = useMemo(
@@ -204,7 +255,9 @@ export function MessagesView() {
                       {channelLabel(selected)}
                     </span>
                     <span className="flex-1" />
-                    <AskClaudeButton conversation={selected} />
+                    {!isLocalConversation(selected.id) && (
+                      <AskClaudeButton conversation={selected} />
+                    )}
                     {badge && !badge.healthy && (
                       <Pill variant={badge.tone === 'error' ? 'error' : 'warning'}>
                         {badge.label}
@@ -212,7 +265,15 @@ export function MessagesView() {
                     )}
                   </header>
                   <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                    <ThreadView key={selected.id} conversationId={selected.id} drafts={drafts} />
+                    <ThreadView
+                      key={selected.id}
+                      conversationId={selected.id}
+                      channel={
+                        selected.provider === 'whatsapp' ? selected.source.channel : undefined
+                      }
+                      coreless={isLocalConversation(selected.id)}
+                      drafts={drafts}
+                    />
                   </div>
                   <TriageSuggestion conversation={selected} />
                   <ReplyComposer

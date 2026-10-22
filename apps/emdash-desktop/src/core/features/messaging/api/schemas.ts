@@ -57,6 +57,8 @@ export const messageSchema = z.object({
   edited: z.boolean(),
   /** Core is holding the message back from automation (`quarantined` or `injection_flagged`). */
   heldReason: z.enum(['quarantined', 'injection_flagged']).nullable(),
+  /** A message the owner sent themselves, read from their own WhatsApp history. */
+  outgoing: z.boolean().optional(),
 });
 
 export const conversationThreadSchema = z.object({
@@ -99,6 +101,35 @@ export const providerConnectorSchema = z.object({
 
 export const connectorsSchema = z.object({ connectors: z.array(providerConnectorSchema) });
 
+export const historyInputSchema = z.object({
+  /** The WhatsApp chat of a registered client channel. */
+  channel: z.string(),
+  /** Only messages older than this instant (ISO). */
+  before: z.string().optional(),
+  /** Only messages newer than this instant (ISO). */
+  after: z.string().optional(),
+  /** Only the owner's own messages, for filling gaps in what Core captured. */
+  fromMeOnly: z.boolean().optional(),
+  limit: z.number().int().min(1).max(200).optional(),
+});
+
+export const historyMessageSchema = z.object({
+  id: z.string(),
+  at: z.string(),
+  fromMe: z.boolean(),
+  sender: z.string(),
+  text: z.string(),
+  attachments: z.array(z.string()),
+});
+
+export const historySchema = z.object({
+  /** Oldest first. */
+  messages: z.array(historyMessageSchema),
+  hasMore: z.boolean(),
+  /** False when the local WhatsApp store could not be read at all. */
+  available: z.boolean(),
+});
+
 export const conversationsInputSchema = z.object({ clientId: z.string().optional() });
 export const conversationInputSchema = z.object({ id: z.string() });
 
@@ -124,6 +155,9 @@ export type Draft = z.infer<typeof draftSchema>;
 export type NeedYou = z.infer<typeof needYouSchema>;
 export type ProviderConnector = z.infer<typeof providerConnectorSchema>;
 export type Connectors = z.infer<typeof connectorsSchema>;
+export type HistoryInput = z.infer<typeof historyInputSchema>;
+export type HistoryMessage = z.infer<typeof historyMessageSchema>;
+export type HistoryPage = z.infer<typeof historySchema>;
 export type ConversationsInput = z.infer<typeof conversationsInputSchema>;
 export type CreateDraftInput = z.infer<typeof createDraftInputSchema>;
 export type MessagingError = z.infer<typeof messagingErrorSchema>;

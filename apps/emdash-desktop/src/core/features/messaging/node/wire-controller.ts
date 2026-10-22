@@ -1,3 +1,4 @@
+import { err, ok } from '@emdash/shared';
 import { createController, type Controller } from '@emdash/wire/rpc';
 import type { CoreInvoker } from '@core/features/clientops-core/api/node/core-invoker';
 import { messagingContract } from '../api/contract';
@@ -9,10 +10,12 @@ import {
   readConversation,
 } from './messaging-service';
 import { openApprovalApp, type OpenApprovalApp } from './open-approval-app';
+import { defaultWhatsAppStorePath, readChatHistory } from './whatsapp-history';
 
 export function createMessagingWireController(
   core: CoreInvoker,
-  openApp: OpenApprovalApp = openApprovalApp
+  openApp: OpenApprovalApp = openApprovalApp,
+  storePath: () => string = defaultWhatsAppStorePath
 ): Controller {
   return createController(messagingContract, {
     conversations: (input) => listConversations(core, input),
@@ -20,6 +23,12 @@ export function createMessagingWireController(
     createDraft: (input) => createDraft(core, input),
     needYou: () => listNeedYou(core),
     connectors: () => listConnectors(core),
+    history: (input) => {
+      const page = readChatHistory(storePath(), input);
+      return 'error' in page
+        ? err({ code: 'invalid_input', message: 'That is not a WhatsApp chat' })
+        : ok(page);
+    },
     openApprovalApp: () => openApp(),
   });
 }

@@ -1,17 +1,20 @@
 import { EmptyState, Markdown, Pill } from '@emdash/ui/react/components';
 import { Button, Spinner } from '@emdash/ui/react/primitives';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMarkdownLinkOpener } from '@core/primitives/external-links/browser';
 import {
   conversationMessagesQueryOptions,
+  fetchHistory,
   MessagingQueryError,
+  ownRepliesQueryOptions,
 } from '../api/browser/messaging-queries';
 import { describeMessagingFailure } from '../api/failure-messages';
 import { UNRECOGNIZED_SENDER } from '../api/labels';
 import { describeDraftState } from '../api/need-you';
-import type { Draft, ThreadMessage } from '../api/schemas';
+import type { Draft, HistoryMessage, ThreadMessage } from '../api/schemas';
 import { groupMessagesByDay, messageTime } from '../api/thread';
+import { mergeThread, oldestCoreTime } from '../api/thread-merge';
 
 const HELD_NOTES = {
   quarantined: 'Held by Core: sender not recognised',
@@ -49,6 +52,32 @@ function IncomingMessage({ message }: { message: ThreadMessage }) {
   );
 }
 
+function OutgoingMessage({ message }: { message: ThreadMessage }) {
+  const openLink = useMarkdownLinkOpener();
+  return (
+    <div className="flex max-w-[80%] flex-col items-end gap-1 self-end">
+      <div className="rounded-lg border border-border bg-background-2 px-3 py-2">
+        <div className="mb-1 flex items-baseline justify-end gap-2">
+          <span className="text-[11px] text-foreground-passive tabular-nums">
+            {messageTime(message.at)}
+          </span>
+          <span className="text-xs font-medium text-foreground">You</span>
+        </div>
+        <div className="text-sm break-words text-foreground [&_*:last-child]:mb-0">
+          <Markdown content={message.text} variant="compact" onOpenLink={openLink} />
+        </div>
+        {message.attachments.length > 0 && (
+          <p className="mt-1 text-xs text-foreground-muted">
+            Attached: {message.attachments.join(', ')}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const HISTORY_PAGE = 100;
+
 function DraftBubble({ draft }: { draft: Draft }) {
   const state = describeDraftState(draft.state);
   return (
@@ -74,18 +103,56 @@ function DaySeparator({ label }: { label: string }) {
 }
 
 /**
- * One conversation as a thread: day sections, the client's messages on the left and drafts
- * waiting for approval on the right. Messages are read live from Core every 15 seconds.
+ * One conversation as a thread: day sections, the client's messages on the left and the owner's
+ * own replies and drafts on the right. Core's messages are read live every 15 seconds; the owner's
+ * replies and any earlier history come from their local WhatsApp store, read-only.
  */
 export function ThreadView({
   conversationId,
+  channel,
   drafts,
+  coreless = false,
 }: {
   conversationId: string;
+  /** The WhatsApp chat, for reading history; undefined for other providers. */
+  channel: string | undefined;
+  /** A client chat Core has not captured: the thread comes from WhatsApp history alone. */
+  coreless?: boolean;
   drafts: readonly Draft[];
 }) {
-  const query = useQuery(conversationMessagesQueryOptions(conversationId));
+  const query = useQuery({
+    ...conversationMessagesQueryOptions(conversationId),
+    enabled: !coreless,
+  });
   const [showHeld, setShowHeld] = useState(false);
+  const oldestCore = useMemo(() => oldestCoreTime(query.data?.messages ?? []), [query.data]);
+  const ownReplies = useQuery({
+    ...ownRepliesQueryOptions(channel ?? '', oldestCore),
+    enabled: channel !== undefined && query.isSuccess && !coreless,
+  });
+  const [older, setOlder] = useState<HistoryMessage[]>([]);
+  const [olderState, setOlderState] = useState<
+    'idle' | 'loading' | 'more' | 'done' | 'unavailable'
+  >('idle');
+  const loadOlder = async () => {
+    if (channel === undefined || olderState === 'loading') return;
+    setOlderState('loading');
+    try {
+      const page = await fetchHistory({
+        channel,
+        before: older[0]?.at ?? oldestCore,
+        limit: HISTORY_PAGE,
+      });
+      if (!page.available) {
+        setOlderState('unavailable');
+        return;
+      }
+      setOlder((current) => [...page.messages, ...current]);
+      setOlderState(page.hasMore ? 'more' : 'done');
+    } catch {
+      setOlderState('unavailable');
+    }
+  };
   // Messages Core holds back from senders it does not know are not the owner's to answer, so
   // they stay folded away unless asked for. A held message from a registered contact stays visible.
   const isStranger = (message: ThreadMessage) =>
@@ -95,28 +162,40 @@ export function ThreadView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [query.data]
   );
+  // A chat Core has not captured opens on its latest history right away, once.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (coreless) void loadOlder();
+  }, [coreless]);
+
   const sections = useMemo(
     () =>
-      query.data
-        ? groupMessagesByDay(
-            showHeld
-              ? query.data.messages
-              : query.data.messages.filter((message) => !isStranger(message)),
-            new Date()
-          )
-        : [],
+      coreless
+        ? groupMessagesByDay(mergeThread([], older, []), new Date())
+        : query.data
+          ? groupMessagesByDay(
+              mergeThread(
+                showHeld
+                  ? query.data.messages
+                  : query.data.messages.filter((message) => !isStranger(message)),
+                older,
+                ownReplies.data?.messages ?? []
+              ),
+              new Date()
+            )
+          : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [query.data, showHeld]
+    [coreless, query.data, showHeld, older, ownReplies.data]
   );
 
-  if (query.isPending) {
+  if (!coreless && query.isPending) {
     return (
       <div className="flex h-48 items-center justify-center">
         <Spinner />
       </div>
     );
   }
-  if (query.isError) {
+  if (!coreless && query.isError) {
     const code = query.error instanceof MessagingQueryError ? query.error.code : 'unknown';
     const failure = describeMessagingFailure(code, 'thread');
     return (
@@ -132,7 +211,12 @@ export function ThreadView({
       />
     );
   }
-  if (sections.length === 0 && drafts.length === 0 && held.length === 0) {
+  if (
+    sections.length === 0 &&
+    drafts.length === 0 &&
+    held.length === 0 &&
+    (!coreless || olderState === 'done' || olderState === 'unavailable')
+  ) {
     return (
       <EmptyState
         bare
@@ -143,7 +227,21 @@ export function ThreadView({
   }
   return (
     <div className="flex flex-col gap-3">
-      {query.data.truncated && (
+      {channel !== undefined && olderState !== 'done' && (
+        <button
+          type="button"
+          className="self-center rounded-md bg-background-1 px-3 py-1.5 text-xs text-foreground-muted hover:text-foreground disabled:opacity-60"
+          disabled={olderState === 'loading' || olderState === 'unavailable'}
+          onClick={() => void loadOlder()}
+        >
+          {olderState === 'loading'
+            ? 'Loading earlier messages…'
+            : olderState === 'unavailable'
+              ? 'Your WhatsApp history is not readable on this Mac'
+              : 'Show earlier messages from your WhatsApp'}
+        </button>
+      )}
+      {query.data?.truncated && (
         <p className="rounded-md bg-background-1 px-3 py-1.5 text-xs text-foreground-muted">
           Showing the earliest part of a long conversation.
         </p>
@@ -151,9 +249,13 @@ export function ThreadView({
       {sections.map((section) => (
         <section key={section.key} className="flex flex-col gap-2">
           <DaySeparator label={section.label} />
-          {section.messages.map((message) => (
-            <IncomingMessage key={message.seq} message={message} />
-          ))}
+          {section.messages.map((message) =>
+            message.outgoing ? (
+              <OutgoingMessage key={message.seq} message={message} />
+            ) : (
+              <IncomingMessage key={message.seq} message={message} />
+            )
+          )}
         </section>
       ))}
       {held.length > 0 && (

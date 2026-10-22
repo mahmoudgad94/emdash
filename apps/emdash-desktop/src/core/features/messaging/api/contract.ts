@@ -4,6 +4,8 @@ import {
   approvalAppOpenedSchema,
   connectorsSchema,
   conversationInputSchema,
+  historyInputSchema,
+  historySchema,
   conversationListSchema,
   conversationsInputSchema,
   conversationThreadSchema,
@@ -34,6 +36,12 @@ export const messagingContract = defineContract({
   needYou: fallible({
     input: z.void(),
     data: needYouSchema,
+    error: messagingErrorSchema,
+  }),
+  /** Older messages of a client's WhatsApp chat, and the owner's own replies, read from the local WhatsApp store. */
+  history: fallible({
+    input: historyInputSchema,
+    data: historySchema,
     error: messagingErrorSchema,
   }),
   /** The message providers Core has wired up, with their health. */

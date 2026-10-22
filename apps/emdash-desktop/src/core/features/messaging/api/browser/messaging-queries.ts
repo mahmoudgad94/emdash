@@ -2,6 +2,8 @@ import type { QueryObserverOptions } from '@tanstack/react-query';
 import { CLIENT_OPS_QUERY_ROOT } from '@core/features/clientops-core/api';
 import type {
   Connectors,
+  HistoryInput,
+  HistoryPage,
   ConversationList,
   ConversationThread,
   CreateDraftInput,
@@ -50,6 +52,12 @@ export async function fetchConversationMessages(id: string): Promise<Conversatio
 
 export async function fetchConnectors(): Promise<Connectors> {
   const result = await (await getMessagingClient()).connectors(undefined);
+  if (!result.success) throw new MessagingQueryError(result.error.code, result.error.message);
+  return result.data;
+}
+
+export async function fetchHistory(input: HistoryInput): Promise<HistoryPage> {
+  const result = await (await getMessagingClient()).history(input);
   if (!result.success) throw new MessagingQueryError(result.error.code, result.error.message);
   return result.data;
 }
@@ -137,5 +145,20 @@ export function connectorsQueryOptions(
     retry: false,
     refetchOnWindowFocus: false,
     refetchInterval: (query) => (stopsOnDenial(query) ? false : CONNECTORS_REFRESH_MS),
+  };
+}
+
+/** The owner's own replies in a chat since a point in time; Core does not capture these. */
+export function ownRepliesQueryOptions(
+  channel: string,
+  after: string | undefined
+): QueryObserverOptions<HistoryPage, MessagingQueryError> {
+  return {
+    queryKey: [...ROOT, 'history', 'own', channel, after ?? null] as const,
+    queryFn: () => fetchHistory({ channel, after, fromMeOnly: true, limit: 200 }),
+    staleTime: MESSAGES_REFRESH_MS,
+    retry: false,
+    refetchInterval: MESSAGES_REFRESH_MS,
+    refetchOnWindowFocus: false,
   };
 }
