@@ -53,11 +53,14 @@ export const CreateTaskModal = observer(function CreateTaskModal({
   strategy: initialStrategy,
   initialPR,
   initialWorkspaceId,
+  initialPrompt,
 }: {
   projectId?: string;
   strategy?: CreateTaskStrategy;
   initialPR?: PullRequest;
   initialWorkspaceId?: string;
+  /** A prompt the conversation starts with, prepared by the caller. */
+  initialPrompt?: string;
 }) {
   const { complete } = useModalController('taskModal');
   const selectedProjectId = useDefaultProjectId(projectId);
@@ -110,7 +113,9 @@ export const CreateTaskModal = observer(function CreateTaskModal({
   );
 
   const { includeIssueContextByDefault } = useTaskSettings();
-  const initialConversation = useInitialConversationState(selectedProjectId);
+  const initialConversation = useInitialConversationState(selectedProjectId, undefined, {
+    initialPrompt,
+  });
   const { navigate } = useNavigate();
 
   const { handleCreateTask, canCreate } = useCreateTaskCallback({

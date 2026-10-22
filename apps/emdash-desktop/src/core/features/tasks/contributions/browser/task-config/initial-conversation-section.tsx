@@ -87,6 +87,8 @@ interface InitialConversationStateOptions {
   resetPromptOnProjectChange?: boolean;
   launchSettings?: ConversationLaunchSettings;
   initialOptions?: Record<string, string | boolean>;
+  /** Text the prompt starts with, for callers that prepare one (for example a client triage). */
+  initialPrompt?: string;
 }
 
 export function useInitialConversationState(
@@ -98,7 +100,7 @@ export function useInitialConversationState(
   const connectionId = projectId ? getProjectSshConnectionId(projectId) : undefined;
   const { providerId, setProviderOverride } = useEffectiveProvider(connectionId, initialProvider);
   const { data: agents } = useAgents(hostRefFromConnectionId(connectionId));
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(options.initialPrompt ?? '');
   const [issueContext, setIssueContext] = useState<string | null>(null);
   const capabilities = agents?.find((agent) => agent.id === providerId)?.capabilities;
   const launchSettings = useConversationLaunchSettings(

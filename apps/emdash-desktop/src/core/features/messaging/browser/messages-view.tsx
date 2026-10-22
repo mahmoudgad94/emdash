@@ -26,6 +26,7 @@ import { describeMessagingFailure } from '../api/failure-messages';
 import { channelLabel, connectorBadge } from '../api/labels';
 import { draftsForChannel } from '../api/thread';
 import { messagesViewDef } from '../contributions/views';
+import { AskClaudeButton } from './ask-claude-button';
 import { ConnectorDot } from './connector-dot';
 import { ConversationList } from './conversation-list';
 import { NeedYouSheet } from './need-you-sheet';
@@ -196,6 +197,8 @@ export function MessagesView() {
                     <span className="min-w-0 truncate text-xs text-foreground-muted">
                       {channelLabel(selected)}
                     </span>
+                    <span className="flex-1" />
+                    <AskClaudeButton conversation={selected} />
                     {badge && !badge.healthy && (
                       <Pill variant={badge.tone === 'error' ? 'error' : 'warning'}>
                         {badge.label}
