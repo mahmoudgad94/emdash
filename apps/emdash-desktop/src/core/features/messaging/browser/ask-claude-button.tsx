@@ -5,7 +5,6 @@ import {
   clientWorkQueryOptions,
   clientsQueryOptions,
 } from '@core/features/clients/api/browser/clients-queries';
-import { formatMinor } from '@core/features/clients/api/money';
 import { clientsStoreToken } from '@core/features/clients/contributions/app-store-tokens';
 import { taskViewDef } from '@core/features/tasks/contributions/views';
 import { useOpenModal } from '@core/manifests/browser/modal-api';
@@ -16,10 +15,9 @@ import {
   conversationMessagesQueryOptions,
   needYouQueryOptions,
 } from '../api/browser/messaging-queries';
-import { channelLabel, UNRECOGNIZED_SENDER } from '../api/labels';
 import type { ConversationSummary } from '../api/schemas';
-import { draftsForChannel } from '../api/thread';
-import { orderRepos, pickTriageProject } from '../api/triage-project';
+import { buildTriageContext } from '../api/triage-context';
+import { pickTriageProject } from '../api/triage-project';
 import { buildTriagePrompt, triageTaskName } from '../api/triage-prompt';
 import { threadLinkMemento } from '../contributions/mementos';
 
@@ -55,32 +53,13 @@ export function AskClaudeButton({ conversation }: { conversation: ConversationSu
       });
       return;
     }
-    const clientProject = client.projects.find((p) => p.id === conversation.source.projectId);
-    const messages = thread.data.messages
-      .filter((m) => m.heldReason === null || m.sender !== UNRECOGNIZED_SENDER)
-      .map((m) => ({ sender: m.sender, at: m.at, text: m.text }));
-    const data = work.data;
-    const business = data?.linked
-      ? [
-          ...data.contracts.map((c) => `Contract: ${c.label}${c.state ? ` (${c.state})` : ''}`),
-          `${data.payments.count} payments, ${formatMinor(data.payments.totalMinor, data.payments.currency)}`,
-        ]
-      : [];
-    const context = {
-      clientName: client.name,
-      agreement: client.agreement,
-      contacts: client.people.map((p) => p.name),
-      channel: channelLabel(conversation).split(' · ')[0] ?? conversation.provider,
-      projectName: clientProject?.name ?? conversation.source.projectName,
-      repos: orderRepos(clientProject?.repos ?? client.projects.flatMap((p) => p.repos)),
-      messages,
-      business,
-      pendingDrafts: draftsForChannel(needYou.data?.drafts ?? [], {
-        provider: conversation.provider,
-        account: conversation.source.account,
-        channel: conversation.source.channel,
-      }).map((d) => d.text),
-    };
+    const context = buildTriageContext({
+      client,
+      conversation,
+      messages: thread.data.messages,
+      work: work.data,
+      drafts: needYou.data?.drafts ?? [],
+    });
     void openCreateTask({
       projectId,
       initialPrompt: buildTriagePrompt(context),
