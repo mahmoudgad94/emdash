@@ -1,3 +1,4 @@
+import { UNRECOGNIZED_SENDER } from './labels';
 import type { ConversationSummary } from './schemas';
 
 export type ClientConversationGroup = {
@@ -57,6 +58,21 @@ export function findConversation(
 ): ConversationSummary | undefined {
   if (id === undefined) return undefined;
   return flattenGroups(groups).find((conversation) => conversation.id === id);
+}
+
+/**
+ * Whether a conversation needs the owner: a drafted reply is waiting, or there are untriaged
+ * messages that are not just Core holding back strangers. Held messages from a registered
+ * contact still count, since the client is real; held messages from unrecognized senders do not.
+ */
+export function needsAttention(
+  conversation: Pick<ConversationSummary, 'untriagedCount' | 'heldCount' | 'lastMessage'>,
+  hasWaitingDraft: boolean
+): boolean {
+  if (hasWaitingDraft) return true;
+  if (conversation.untriagedCount > conversation.heldCount) return true;
+  const sender = conversation.lastMessage?.sender;
+  return conversation.untriagedCount > 0 && sender !== undefined && sender !== UNRECOGNIZED_SENDER;
 }
 
 /** Case-insensitive match on client, project, channel and the last message. */

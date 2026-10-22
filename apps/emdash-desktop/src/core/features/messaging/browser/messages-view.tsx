@@ -18,6 +18,7 @@ import {
 import {
   filterConversations,
   findConversation,
+  needsAttention,
   flattenGroups,
   groupConversationsByClient,
 } from '../api/conversation-groups';
@@ -71,16 +72,35 @@ export function MessagesView() {
   const conversationsQuery = useQuery(conversationsQueryOptions());
   const needYouQuery = useQuery(needYouQueryOptions());
   const [search, setSearch] = useState('');
+  const [showAll, setShowAll] = useState(false);
 
   const all = conversationsQuery.data?.conversations;
+  const waitingDrafts = needYouQuery.data?.drafts;
+  // What needs the owner: accepted messages nobody has triaged, or a draft waiting for approval.
+  const attention = useMemo(
+    () =>
+      (all ?? []).filter((conversation) =>
+        needsAttention(
+          conversation,
+          draftsForChannel(waitingDrafts ?? [], {
+            provider: conversation.provider,
+            account: conversation.source.account,
+            channel: conversation.source.channel,
+          }).length > 0
+        )
+      ),
+    [all, waitingDrafts]
+  );
+  const visible = useMemo(() => (showAll ? (all ?? []) : attention), [showAll, all, attention]);
   const groups = useMemo(
-    () => groupConversationsByClient(filterConversations(all ?? [], search)),
-    [all, search]
+    () => groupConversationsByClient(filterConversations(visible, search)),
+    [visible, search]
   );
   const everyGroup = useMemo(() => groupConversationsByClient(all ?? []), [all]);
-  // Without a chosen conversation the most recent one of the first client is open.
+  const visibleGroups = useMemo(() => groupConversationsByClient(visible), [visible]);
+  // Without a chosen conversation the most recent one that needs the owner is open.
   const selected =
-    findConversation(everyGroup, params.conversationId) ?? flattenGroups(everyGroup)[0];
+    findConversation(everyGroup, params.conversationId) ?? flattenGroups(visibleGroups)[0];
 
   const drafts = useMemo(
     () =>
@@ -130,6 +150,27 @@ export function MessagesView() {
                 onChange={(event) => setSearch(event.target.value)}
                 onClear={() => setSearch('')}
               />
+              <div className="flex shrink-0 gap-1.5">
+                <Button
+                  size="sm"
+                  variant={showAll ? 'ghost' : 'secondary'}
+                  onClick={() => setShowAll(false)}
+                >
+                  {`Needs you (${attention.length})`}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={showAll ? 'secondary' : 'ghost'}
+                  onClick={() => setShowAll(true)}
+                >
+                  {`All (${all?.length ?? 0})`}
+                </Button>
+              </div>
+              {!showAll && attention.length === 0 && search.trim() === '' && (
+                <p className="rounded-lg border border-border bg-background-1 px-3 py-3 text-sm text-foreground-muted">
+                  Nothing needs you right now.
+                </p>
+              )}
               <div className="min-h-0 flex-1 overflow-y-auto">
                 <ConversationList
                   groups={groups}

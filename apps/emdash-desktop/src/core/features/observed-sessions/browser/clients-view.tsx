@@ -266,7 +266,12 @@ export function ClientsView() {
               )}
               {showOverview ? (
                 <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                  <ClientPage client={selectedClient} />
+                  <ClientPage
+                    client={selectedClient}
+                    live={(summary?.active ?? []).filter(
+                      (session) => session.clientId === selectedClient.id
+                    )}
+                  />
                 </div>
               ) : (
                 <>

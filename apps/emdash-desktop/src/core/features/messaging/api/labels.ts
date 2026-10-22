@@ -21,6 +21,9 @@ export function channelLabel(
   return `${providerLabel(conversation.provider)}${kind} · ${conversation.source.projectName}`;
 }
 
+/** What Core calls a sender it has no registered person for. */
+export const UNRECOGNIZED_SENDER = 'Unrecognized sender';
+
 export type ConnectorTone = 'success' | 'warning' | 'error' | 'neutral';
 
 export type ConnectorBadge = { tone: ConnectorTone; label: string; healthy: boolean };

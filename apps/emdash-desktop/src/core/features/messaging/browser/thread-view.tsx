@@ -1,13 +1,14 @@
 import { EmptyState, Markdown, Pill } from '@emdash/ui/react/components';
 import { Button, Spinner } from '@emdash/ui/react/primitives';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useMarkdownLinkOpener } from '@core/primitives/external-links/browser';
 import {
   conversationMessagesQueryOptions,
   MessagingQueryError,
 } from '../api/browser/messaging-queries';
 import { describeMessagingFailure } from '../api/failure-messages';
+import { UNRECOGNIZED_SENDER } from '../api/labels';
 import { describeDraftState } from '../api/need-you';
 import type { Draft, ThreadMessage } from '../api/schemas';
 import { groupMessagesByDay, messageTime } from '../api/thread';
@@ -79,9 +80,28 @@ export function ThreadView({
   drafts: readonly Draft[];
 }) {
   const query = useQuery(conversationMessagesQueryOptions(conversationId));
-  const sections = useMemo(
-    () => (query.data ? groupMessagesByDay(query.data.messages, new Date()) : []),
+  const [showHeld, setShowHeld] = useState(false);
+  // Messages Core holds back from senders it does not know are not the owner's to answer, so
+  // they stay folded away unless asked for. A held message from a registered contact stays visible.
+  const isStranger = (message: ThreadMessage) =>
+    message.heldReason !== null && message.sender === UNRECOGNIZED_SENDER;
+  const held = useMemo(
+    () => (query.data?.messages ?? []).filter(isStranger),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [query.data]
+  );
+  const sections = useMemo(
+    () =>
+      query.data
+        ? groupMessagesByDay(
+            showHeld
+              ? query.data.messages
+              : query.data.messages.filter((message) => !isStranger(message)),
+            new Date()
+          )
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [query.data, showHeld]
   );
 
   if (query.isPending) {
@@ -107,7 +127,7 @@ export function ThreadView({
       />
     );
   }
-  if (sections.length === 0 && drafts.length === 0) {
+  if (sections.length === 0 && drafts.length === 0 && held.length === 0) {
     return (
       <EmptyState
         bare
@@ -131,6 +151,17 @@ export function ThreadView({
           ))}
         </section>
       ))}
+      {held.length > 0 && (
+        <button
+          type="button"
+          className="self-start rounded-md bg-background-1 px-3 py-1.5 text-xs text-foreground-muted hover:text-foreground"
+          onClick={() => setShowHeld((value) => !value)}
+        >
+          {showHeld
+            ? 'Hide messages held by Core'
+            : `${held.length} ${held.length === 1 ? 'message' : 'messages'} from senders Core does not trust, held back · Show`}
+        </button>
+      )}
       {drafts.length > 0 && (
         <section className="flex flex-col gap-2">
           <DaySeparator label="Waiting for your approval" />

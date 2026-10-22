@@ -20,6 +20,19 @@ import { formatMinor } from '../api/money';
 import { placeRepos, repoBasename, type PlacedRepo, type RepoGroup } from '../api/repo-placement';
 import type { Client, ClientChannel } from '../api/schemas';
 
+/** A session running for the client right now, as the Clients view reads it from Core. */
+export type LiveClientSession = {
+  id: string;
+  host: string;
+  source: string;
+  branch: string | null;
+  toolCalls: number | null;
+  endedAt: string;
+};
+
+const SOURCE_LABELS: Record<string, string> = { claude: 'Claude Code', codex: 'Codex', git: 'Git' };
+const hostLabel = (host: string) => (host === 'local-mac' ? 'This Mac' : host.replace(/^ssh-/, ''));
+
 const AGREEMENTS: Record<string, string> = {
   retainer: 'Retainer',
   per_task: 'Per task',
@@ -329,6 +342,42 @@ function ChannelsSection({ client }: { client: Client }) {
   );
 }
 
+function ActiveNowSection({ sessions }: { sessions: readonly LiveClientSession[] }) {
+  if (sessions.length === 0) return null;
+  return (
+    <Section
+      title="Active now"
+      aside={
+        <Pill variant="success" dot>
+          {sessions.length} live
+        </Pill>
+      }
+    >
+      {sessions.map((session, index) => (
+        <ListView.Row key={session.id} bare isLast={index === sessions.length - 1} divider="subtle">
+          <div className="flex min-h-10 items-center gap-3 px-3 py-1.5">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-sm text-foreground">
+                {SOURCE_LABELS[session.source] ?? session.source}
+                {session.branch ? ` · ${session.branch}` : ''}
+              </span>
+              <span className="truncate text-xs text-foreground-muted">
+                {hostLabel(session.host)}
+                {session.toolCalls !== null ? ` · ${session.toolCalls} tool calls` : ''}
+              </span>
+            </div>
+            <RelativeTime
+              value={session.endedAt}
+              compact
+              className="shrink-0 text-[11px] text-foreground-passive tabular-nums"
+            />
+          </div>
+        </ListView.Row>
+      ))}
+    </Section>
+  );
+}
+
 function BusinessSection({ client }: { client: Client }) {
   const work = useQuery(clientWorkQueryOptions(client.id));
   const data = work.data;
@@ -390,7 +439,13 @@ function BusinessSection({ client }: { client: Client }) {
 }
 
 /** What Core registered for one client, laid out as the owner works: code, conversations, money. */
-export function ClientPage({ client }: { client: Client }) {
+export function ClientPage({
+  client,
+  live = [],
+}: {
+  client: Client;
+  live?: readonly LiveClientSession[];
+}) {
   const agreement = client.agreement ? (AGREEMENTS[client.agreement] ?? client.agreement) : null;
   return (
     <div className="flex flex-col gap-4">
@@ -404,9 +459,10 @@ export function ClientPage({ client }: { client: Client }) {
           </span>
         )}
       </div>
+      <ActiveNowSection sessions={live} />
       <ChannelsSection client={client} />
-      <ProjectsSection client={client} />
       <BusinessSection client={client} />
+      <ProjectsSection client={client} />
     </div>
   );
 }

@@ -1,1 +1,1 @@
-export { ClientPage } from '../browser/client-page';
+export { ClientPage, type LiveClientSession } from '../browser/client-page';
