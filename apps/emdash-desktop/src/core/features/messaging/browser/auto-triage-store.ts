@@ -18,8 +18,11 @@ import {
 import {
   fetchConversationMessages,
   fetchConversations,
+  fetchHistory,
   fetchNeedYou,
 } from '../api/browser/messaging-queries';
+import { replyState } from '../api/reply-state';
+import type { ConversationSummary } from '../api/schemas';
 import { buildTriageContext } from '../api/triage-context';
 import { pickTriageProject } from '../api/triage-project';
 import { buildTriagePrompt, triageTaskName, type TriageResult } from '../api/triage-prompt';
@@ -161,6 +164,22 @@ export class AutoTriageStore {
     return undefined;
   }
 
+  /** The owner already answered the client's last message from their phone. */
+  private async ownerAnsweredSince(conversation: ConversationSummary): Promise<boolean> {
+    if (conversation.provider !== 'whatsapp') return false;
+    try {
+      const page = await fetchHistory({
+        channel: conversation.source.channel,
+        fromMeOnly: true,
+        limit: 1,
+      });
+      if (!page.available) return false;
+      return replyState(conversation, page.messages.at(-1)?.at ?? null).kind === 'replied';
+    } catch {
+      return false;
+    }
+  }
+
   /** Starts a triage task for the longest-waiting new message, when one is due. */
   private async startNext(): Promise<void> {
     const mementos = this.deps.memento();
@@ -188,6 +207,13 @@ export class AutoTriageStore {
       });
 
       for (const { conversation, projectId } of candidates) {
+        if (await this.ownerAnsweredSince(conversation)) {
+          handle.update((current) => ({
+            ...current,
+            attempted: { ...current.attempted, [conversation.id]: conversation.lastSeq },
+          }));
+          continue;
+        }
         const client = clients.clients.find((c) => c.id === conversation.source.clientId);
         if (!client) continue;
 

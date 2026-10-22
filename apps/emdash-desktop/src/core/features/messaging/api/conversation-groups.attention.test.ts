@@ -35,3 +35,15 @@ describe('needsAttention', () => {
     expect(needsAttention({ untriagedCount: 0, heldCount: 0, lastMessage: null }, true)).toBe(true);
   });
 });
+
+describe("needsAttention with the owner's own replies", () => {
+  const waiting = { untriagedCount: 6, heldCount: 0, lastMessage: from('Stephen Ellis') };
+  it('stops needing the owner once they answered from their phone', () => {
+    const withTime = {
+      ...waiting,
+      lastMessage: { ...from('Stephen Ellis'), at: '2026-10-22T10:00:00.000Z' },
+    };
+    expect(needsAttention(withTime, false, '2026-10-22T10:05:00.000Z')).toBe(false);
+    expect(needsAttention(withTime, false, '2026-10-22T09:00:00.000Z')).toBe(true);
+  });
+});

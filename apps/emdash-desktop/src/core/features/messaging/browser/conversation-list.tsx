@@ -1,11 +1,14 @@
-import { EmptyState, Pill } from '@emdash/ui/react/components';
+import { EmptyState } from '@emdash/ui/react/components';
 import { ListView } from '@emdash/ui/react/patterns';
 import { RelativeTime } from '@emdash/ui/react/primitives';
 import type { KeyboardEvent } from 'react';
 import type { ClientConversationGroup } from '../api/conversation-groups';
 import { channelLabel, previewText } from '../api/labels';
+import type { ReplyState } from '../api/reply-state';
 import type { ConversationSummary } from '../api/schemas';
 import { ConnectorDot } from './connector-dot';
+import { ReplyChip } from './reply-chip';
+import { TriageHint } from './triage-hint';
 
 function onActivateKey(event: KeyboardEvent<HTMLDivElement>) {
   if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -18,11 +21,13 @@ function ConversationRow({
   selected,
   isLast,
   onSelect,
+  replyStateOf,
 }: {
   conversation: ConversationSummary;
   selected: boolean;
   isLast: boolean;
   onSelect: (id: string) => void;
+  replyStateOf: (id: string) => ReplyState | undefined;
 }) {
   const last = conversation.lastMessage;
   return (
@@ -52,15 +57,12 @@ function ConversationRow({
             />
           )}
         </div>
+        <TriageHint conversationId={conversation.id} />
         <div className="flex items-center gap-2">
           <p className="min-w-0 flex-1 truncate text-xs text-foreground-muted">
             {last ? `${last.sender}: ${previewText(last.text)}` : 'No messages yet'}
           </p>
-          {conversation.untriagedCount > 0 && (
-            <Pill variant="warning" title="Messages nobody has triaged yet">
-              {conversation.untriagedCount}
-            </Pill>
-          )}
+          <ReplyChip state={replyStateOf(conversation.id)} />
         </div>
       </div>
     </ListView.Row>
@@ -73,11 +75,14 @@ export function ConversationList({
   selectedId,
   onSelect,
   searching,
+  replyStates,
 }: {
   groups: readonly ClientConversationGroup[];
   selectedId: string | undefined;
   onSelect: (id: string) => void;
   searching: boolean;
+  /** Whether each conversation waits on the owner, by id. */
+  replyStates: ReadonlyMap<string, ReplyState>;
 }) {
   if (groups.length === 0) {
     return (
@@ -103,6 +108,7 @@ export function ConversationList({
                 selected={conversation.id === selectedId}
                 isLast={index === group.conversations.length - 1}
                 onSelect={onSelect}
+                replyStateOf={(id) => replyStates.get(id)}
               />
             ))}
           </div>

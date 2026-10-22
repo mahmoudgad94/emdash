@@ -166,3 +166,21 @@ describe('hostLabel', () => {
     expect(hostLabel('ssh-devserver')).toBe('devserver');
   });
 });
+
+describe("the owner's own replies", () => {
+  it('drops a conversation the owner already answered from their phone', () => {
+    const answered = conversation('a', {
+      untriagedCount: 3,
+      lastMessage: { text: 'hi', at: '2026-01-01T10:00:00.000Z', sender: 'Ari', senderRef: 'x' },
+    });
+    const model = buildToday({
+      conversations: [answered],
+      drafts: [],
+      sessions: [],
+      clients: [],
+      unlinked: [],
+      ownReplies: new Map([['a', '2026-01-01T10:30:00.000Z']]),
+    });
+    expect(model.needsYou).toEqual([]);
+  });
+});

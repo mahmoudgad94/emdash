@@ -1,4 +1,5 @@
 import { UNRECOGNIZED_SENDER } from './labels';
+import { replyState } from './reply-state';
 import type { ConversationSummary } from './schemas';
 
 export type ClientConversationGroup = {
@@ -61,15 +62,17 @@ export function findConversation(
 }
 
 /**
- * Whether a conversation needs the owner: a drafted reply is waiting, or there are untriaged
- * messages that are not just Core holding back strangers. Held messages from a registered
- * contact still count, since the client is real; held messages from unrecognized senders do not.
+ * Whether a conversation needs the owner: a drafted reply is waiting, or the client is waiting on
+ * a reply. When the owner's own last reply time is known (from their WhatsApp) that decides it;
+ * otherwise Core's untriaged messages do, leaving out strangers Core holds back.
  */
 export function needsAttention(
   conversation: Pick<ConversationSummary, 'untriagedCount' | 'heldCount' | 'lastMessage'>,
-  hasWaitingDraft: boolean
+  hasWaitingDraft: boolean,
+  ownLastAt?: string | null
 ): boolean {
   if (hasWaitingDraft) return true;
+  if (ownLastAt !== undefined) return replyState(conversation, ownLastAt).kind === 'needs_reply';
   if (conversation.untriagedCount > conversation.heldCount) return true;
   const sender = conversation.lastMessage?.sender;
   return conversation.untriagedCount > 0 && sender !== undefined && sender !== UNRECOGNIZED_SENDER;

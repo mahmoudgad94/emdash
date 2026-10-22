@@ -11,6 +11,9 @@ import {
   conversationsQueryOptions,
   needYouQueryOptions,
 } from '@core/features/messaging/api/browser/messaging-queries';
+import { useOwnLastReplies } from '@core/features/messaging/api/browser/own-replies';
+import type { ConversationSummary } from '@core/features/messaging/api/schemas';
+import { TriageHint } from '@core/features/messaging/contributions/triage-hint';
 import { messagesViewDef } from '@core/features/messaging/contributions/views';
 import { workSummaryQueryOptions } from '@core/features/observed-sessions/api/browser/observed-sessions-queries';
 import { clientsViewDef } from '@core/features/observed-sessions/contributions/views';
@@ -28,6 +31,8 @@ import {
   type NeedsYouItem,
 } from '../api/today-model';
 import { todayViewDef } from '../contributions/views';
+
+const NO_CONVERSATIONS: readonly ConversationSummary[] = [];
 
 const AGREEMENTS: Record<string, string> = {
   retainer: 'Retainer',
@@ -101,6 +106,7 @@ function NeedsYouRow({
           <span className="truncate text-xs text-foreground-muted">
             {item.preview.replace(/\s+/g, ' ').trim()}
           </span>
+          <TriageHint conversationId={item.conversationId} />
         </div>
         {item.at && (
           <RelativeTime
@@ -163,6 +169,7 @@ export function TodayView() {
   const summary = useQuery(workSummaryQueryOptions());
   const clients = useQuery(clientsQueryOptions());
   const unlinked = useQuery(unlinkedClientsQueryOptions());
+  const ownReplies = useOwnLastReplies(conversations.data?.conversations ?? NO_CONVERSATIONS);
 
   const model = useMemo(
     () =>
@@ -172,8 +179,9 @@ export function TodayView() {
         sessions: summary.data?.active ?? [],
         clients: clients.data?.clients ?? [],
         unlinked: unlinked.data?.clients ?? [],
+        ownReplies,
       }),
-    [conversations.data, needYou.data, summary.data, clients.data, unlinked.data]
+    [conversations.data, needYou.data, summary.data, clients.data, unlinked.data, ownReplies]
   );
 
   const unreachable =

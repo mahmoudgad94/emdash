@@ -52,6 +52,8 @@ export type TodayInput = {
   sessions: readonly LiveSession[];
   clients: readonly Client[];
   unlinked: readonly UnlinkedClient[];
+  /** When the owner last wrote in each conversation, from their own WhatsApp; absent when unknown. */
+  ownReplies?: ReadonlyMap<string, string | null>;
 };
 
 const SOURCE_LABELS: Record<string, string> = { claude: 'Claude Code', codex: 'Codex', git: 'Git' };
@@ -79,7 +81,11 @@ export function buildToday(input: TodayInput): TodayModel {
     );
 
   const attention = input.conversations.filter((conversation) =>
-    needsAttention(conversation, hasDraft(conversation))
+    needsAttention(
+      conversation,
+      hasDraft(conversation),
+      input.ownReplies?.has(conversation.id) ? input.ownReplies.get(conversation.id) : undefined
+    )
   );
   const needsYou = [...attention]
     .sort((a, b) => b.lastSeq - a.lastSeq || a.id.localeCompare(b.id))

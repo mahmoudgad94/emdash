@@ -19,6 +19,7 @@ import {
   MessagingQueryError,
   needYouQueryOptions,
 } from '../api/browser/messaging-queries';
+import { useOwnLastReplies } from '../api/browser/own-replies';
 import {
   clientWhatsAppChannels,
   isLocalConversation,
@@ -33,7 +34,8 @@ import {
 } from '../api/conversation-groups';
 import { describeMessagingFailure } from '../api/failure-messages';
 import { channelLabel, connectorBadge } from '../api/labels';
-import type { HistoryMessage } from '../api/schemas';
+import { replyState } from '../api/reply-state';
+import type { ConversationSummary, HistoryMessage } from '../api/schemas';
 import { draftsForChannel } from '../api/thread';
 import { clientThreadSubject } from '../contributions/subject';
 import { messagesViewDef } from '../contributions/views';
@@ -44,6 +46,8 @@ import { NeedYouSheet } from './need-you-sheet';
 import { ReplyComposer } from './reply-composer';
 import { ThreadView } from './thread-view';
 import { TriageSuggestion } from './triage-suggestion';
+
+const EMPTY_CONVERSATIONS: readonly ConversationSummary[] = [];
 
 function failureCode(error: unknown): string {
   return error instanceof MessagingQueryError ? error.code : 'unknown';
@@ -131,6 +135,7 @@ export function MessagesView() {
     [captured, clientsQuery.data, lastByChannel, whatsappState]
   );
   const waitingDrafts = needYouQuery.data?.drafts;
+  const ownReplies = useOwnLastReplies(all ?? EMPTY_CONVERSATIONS);
   // What needs the owner: accepted messages nobody has triaged, or a draft waiting for approval.
   const attention = useMemo(
     () =>
@@ -141,10 +146,24 @@ export function MessagesView() {
             provider: conversation.provider,
             account: conversation.source.account,
             channel: conversation.source.channel,
-          }).length > 0
+          }).length > 0,
+          ownReplies.has(conversation.id) ? ownReplies.get(conversation.id) : undefined
         )
       ),
-    [all, waitingDrafts]
+    [all, waitingDrafts, ownReplies]
+  );
+  const replyStates = useMemo(
+    () =>
+      new Map(
+        (all ?? []).map((conversation) => [
+          conversation.id,
+          replyState(
+            conversation,
+            ownReplies.has(conversation.id) ? ownReplies.get(conversation.id) : undefined
+          ),
+        ])
+      ),
+    [all, ownReplies]
   );
   const visible = useMemo(() => (showAll ? (all ?? []) : attention), [showAll, all, attention]);
   const groups = useMemo(
@@ -232,6 +251,7 @@ export function MessagesView() {
                   selectedId={selected?.id}
                   onSelect={(id) => setParams({ conversationId: id })}
                   searching={search.trim() !== ''}
+                  replyStates={replyStates}
                 />
                 {conversationsQuery.data?.truncated && (
                   <p className="px-1 pt-2 text-xs text-foreground-muted">
