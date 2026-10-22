@@ -25,14 +25,7 @@ export const threadLinkMemento = defineMemento({
 
 const autoTriageV1Schema = z.object({
   version: z.literal('1'),
-  enabled: z.boolean(),
-  baselineSeq: z.number().int().nonnegative().nullable(),
-  day: z.string(),
-  started: z.number().int().nonnegative(),
-  attempted: z.record(z.string(), z.number().int()),
-  /** Save Claude's suggested reply as a draft by itself. */
-  autoDraft: z.boolean().default(true),
-  /** Triage tasks whose answer has not been read back yet, by conversation. */
+  /** Triage tasks started by hand whose answer has not been read back yet, by conversation. */
   pending: z
     .record(
       z.string(),
@@ -47,24 +40,14 @@ export const autoTriageMemento = defineMemento({
   id: 'messaging.auto-triage',
   subject: appSubject,
   schema: autoTriageSchema,
-  default: {
-    version: '1' as const,
-    enabled: true,
-    baselineSeq: null,
-    day: '',
-    started: 0,
-    attempted: {},
-    autoDraft: true,
-    pending: {},
-  },
+  default: { version: '1' as const, pending: {} },
   retention: { tier: 'persisted', maxAge: days(365), maxEntries: 1 },
 });
 
 const threadTriageV1Schema = z.object({
   version: z.literal('1'),
   /** `waiting` while Claude works, `ready` when its answer is read back, `used` once acted on. */
-  /** `drafted` when the automation saved Claude's reply as a draft by itself. */
-  status: z.enum(['none', 'waiting', 'ready', 'drafted', 'used', 'failed']),
+  status: z.enum(['none', 'waiting', 'ready', 'used', 'failed']),
   startedAt: z.string().nullable(),
   result: z
     .object({

@@ -5,8 +5,6 @@ import {
   connectorsSchema,
   conversationInputSchema,
   historyInputSchema,
-  runTriageInputSchema,
-  runTriageResultSchema,
   historySchema,
   conversationListSchema,
   conversationsInputSchema,
@@ -44,12 +42,6 @@ export const messagingContract = defineContract({
   history: fallible({
     input: historyInputSchema,
     data: historySchema,
-    error: messagingErrorSchema,
-  }),
-  /** Runs Claude Code once, read-only, in a project folder on this Mac and returns its answer. */
-  runTriage: fallible({
-    input: runTriageInputSchema,
-    data: runTriageResultSchema,
     error: messagingErrorSchema,
   }),
   /** The message providers Core has wired up, with their health. */

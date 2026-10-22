@@ -50,26 +50,6 @@ export function TriageSuggestion({ conversation }: { conversation: ConversationS
       </p>
     );
   }
-  if (triage.status === 'drafted' && result) {
-    return (
-      <div className="flex shrink-0 flex-col gap-1.5 rounded-lg border border-border bg-background-1 px-3 py-2.5">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-foreground">Claude drafted a reply</span>
-          <Pill variant="info">{triageTypeLabel(result.type)}</Pill>
-        </div>
-        {result.first && (
-          <p className="text-xs text-foreground-muted">
-            <span className="text-foreground">First: </span>
-            {result.first}
-          </p>
-        )}
-        <p className="text-sm break-words whitespace-pre-wrap text-foreground">{result.draft}</p>
-        <p className="text-xs text-foreground-muted">
-          Saved as a draft in Need you. Sending needs your Touch ID in the Mac app.
-        </p>
-      </div>
-    );
-  }
   if (triage.status !== 'ready' || !result) return null;
 
   return (

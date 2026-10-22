@@ -1,4 +1,6 @@
 import { scopedStoreToken } from '@core/primitives/scoped-stores/browser';
-import type { AutoTriageStore } from '../browser/auto-triage-store';
+import type { TriageResultsStore } from '../browser/triage-results-store';
 
-export const autoTriageStoreToken = scopedStoreToken<AutoTriageStore>('messaging.auto-triage');
+export const triageResultsStoreToken = scopedStoreToken<TriageResultsStore>(
+  'messaging.triage-results'
+);

@@ -2,7 +2,6 @@ import { PageLayout, SettingsRow, SettingsSection } from '@emdash/ui/react/patte
 import { Alert, Badge, Button, Input, toast } from '@emdash/ui/react/primitives';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { AutoTriageSettings } from '@core/features/messaging/contributions/settings-section';
 import { useOpenModal } from '@core/manifests/browser/modal-api';
 import { getHostClient } from '@core/primitives/desktop-host/browser/host-client';
 import { queryClient } from '@core/primitives/query/browser/query-client';
@@ -206,7 +205,6 @@ export function ClientOpsCoreSettingsPage() {
           }
         />
       </SettingsSection>
-      <AutoTriageSettings />
     </div>
   );
 }

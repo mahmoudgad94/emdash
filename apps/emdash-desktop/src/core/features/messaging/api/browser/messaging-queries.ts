@@ -62,13 +62,6 @@ export async function fetchHistory(input: HistoryInput): Promise<HistoryPage> {
   return result.data;
 }
 
-/** Runs Claude Code once, read-only, in a project folder on this Mac and returns its answer. */
-export async function runTriageOnce(input: { cwd: string; prompt: string }): Promise<string> {
-  const result = await (await getMessagingClient()).runTriage(input);
-  if (!result.success) throw new MessagingQueryError(result.error.code, result.error.message);
-  return result.data.text;
-}
-
 export async function fetchNeedYou(): Promise<NeedYou> {
   const result = await (await getMessagingClient()).needYou(undefined);
   if (!result.success) throw new MessagingQueryError(result.error.code, result.error.message);

@@ -7,11 +7,11 @@ function Hint() {
   const [triage] = useMemento(threadTriageMemento);
   if (triage.status === 'waiting')
     return <p className="truncate text-xs text-foreground-passive">Claude is checking…</p>;
-  if ((triage.status !== 'ready' && triage.status !== 'drafted') || !triage.result) return null;
+  if (triage.status !== 'ready' || !triage.result) return null;
   const { type, next } = triage.result;
   return (
     <p className="truncate text-xs text-foreground" title={next}>
-      {triage.status === 'drafted' ? 'Draft ready' : 'Claude'}: {triageTypeLabel(type)}
+      Claude: {triageTypeLabel(type)}
       {next ? ` · ${next}` : ''}
     </p>
   );
