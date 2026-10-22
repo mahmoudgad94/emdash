@@ -7,6 +7,8 @@ import type { CoreLinkError } from '@core/features/clientops-core/api/node/core-
 
 export const APPROVAL_APP_NAME = 'ClientOps';
 const OPEN_TIMEOUT_MS = 10_000;
+/** The Mac app's own link to its Need you screen, where a draft is approved and sent. */
+export const NEED_YOU_LINK = 'clientops://need-you';
 
 export type OpenApprovalApp = () => Promise<Result<{ opened: true }, CoreLinkError>>;
 
@@ -27,9 +29,9 @@ export function approvalAppCandidates(home: string): string[] {
 }
 
 /**
- * Opens the Client Ops Mac app, the only place a draft can be approved (it needs Touch ID).
- * The installed bundle is opened by path; if neither location has it, `open -a ClientOps` lets
- * macOS look the app up by name before this gives up.
+ * Opens the Client Ops Mac app on Need you, the only place a draft can be approved and sent (it
+ * needs Touch ID). The installed bundle is opened by path with its link; if neither location has
+ * it, `open -a ClientOps` lets macOS look the app up by name before this gives up.
  */
 export function createApprovalAppOpener(host: ApprovalAppHost): OpenApprovalApp {
   return async () => {
@@ -47,7 +49,7 @@ export function createApprovalAppOpener(host: ApprovalAppHost): OpenApprovalApp 
       }
     }
     try {
-      await host.open(found ? [found] : ['-a', APPROVAL_APP_NAME]);
+      await host.open(['-a', found ?? APPROVAL_APP_NAME, NEED_YOU_LINK]);
       return ok({ opened: true });
     } catch (error) {
       return err(

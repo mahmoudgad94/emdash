@@ -1,12 +1,13 @@
 import { EmptyState, Markdown, Pill } from '@emdash/ui/react/components';
 import { Button, Spinner } from '@emdash/ui/react/primitives';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMarkdownLinkOpener } from '@core/primitives/external-links/browser';
 import {
   conversationMessagesQueryOptions,
   fetchHistory,
   MessagingQueryError,
+  openApprovalApp,
   ownRepliesQueryOptions,
 } from '../api/browser/messaging-queries';
 import { describeMessagingFailure } from '../api/failure-messages';
@@ -80,12 +81,31 @@ const HISTORY_PAGE = 100;
 
 function DraftBubble({ draft }: { draft: Draft }) {
   const state = describeDraftState(draft.state);
+  const send = useMutation({ mutationFn: openApprovalApp });
   return (
     <div className="flex max-w-[80%] flex-col items-end gap-1 self-end">
       <div className="rounded-lg border border-dashed border-border bg-background-2 px-3 py-2">
         <p className="text-sm break-words whitespace-pre-wrap text-foreground">{draft.text}</p>
       </div>
-      <Pill variant={state.tone === 'warning' ? 'warning' : 'info'}>{state.label}</Pill>
+      <div className="flex items-center gap-2">
+        <Pill variant={state.tone === 'warning' ? 'warning' : 'info'}>{state.label}</Pill>
+        {draft.state === 'drafted' || draft.state === 'awaiting_approval' ? (
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={send.isPending}
+            onClick={() => send.mutate()}
+            title="Opens Need you in the Client Ops Mac app, where you send it with Touch ID."
+          >
+            {send.isPending ? 'Opening…' : 'Send'}
+          </Button>
+        ) : null}
+      </div>
+      {send.isError && (
+        <p className="text-xs text-foreground-destructive">
+          Could not open the Client Ops Mac app. Open it and send from Need you.
+        </p>
+      )}
     </div>
   );
 }

@@ -36,19 +36,21 @@ describe('createApprovalAppOpener', () => {
       success: true,
       data: { opened: true },
     });
-    expect(opened).toEqual([['/Users/me/Applications/ClientOps.app']]);
+    expect(opened).toEqual([
+      ['-a', '/Users/me/Applications/ClientOps.app', 'clientops://need-you'],
+    ]);
   });
 
   it('falls back to the system-wide Applications folder', async () => {
     const { fake, opened } = host({ installed: ['/Applications/ClientOps.app'] });
     await createApprovalAppOpener(fake)();
-    expect(opened).toEqual([['/Applications/ClientOps.app']]);
+    expect(opened).toEqual([['-a', '/Applications/ClientOps.app', 'clientops://need-you']]);
   });
 
   it('lets macOS find the app by name when neither folder has it', async () => {
     const { fake, opened } = host();
     await createApprovalAppOpener(fake)();
-    expect(opened).toEqual([['-a', 'ClientOps']]);
+    expect(opened).toEqual([['-a', 'ClientOps', 'clientops://need-you']]);
   });
 
   it('reports the app as missing when macOS cannot find it either', async () => {
