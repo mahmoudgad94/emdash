@@ -22,7 +22,8 @@ export type FocusView =
   | 'settings'
   | 'automations'
   | 'clients'
-  | 'messages';
+  | 'messages'
+  | 'today';
 export type FocusMainPanel = 'agents' | 'editor' | 'diff' | 'browser' | 'terminal';
 export type FocusedRegion = 'main' | 'bottom';
 
@@ -74,6 +75,7 @@ export type TelemetryEventProperties = {
   automations_viewed: { from_view: FocusView | null };
   clients_viewed: { from_view: FocusView | null };
   messages_viewed: { from_view: FocusView | null };
+  today_viewed: { from_view: FocusView | null };
 
   automation_created: {
     enabled: boolean;

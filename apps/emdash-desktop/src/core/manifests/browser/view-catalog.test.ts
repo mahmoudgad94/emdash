@@ -12,6 +12,7 @@ describe('viewCatalog', () => {
   it('contains exactly the current application view ids', () => {
     expect(viewCatalog.defs.map(({ id }) => id)).toEqual([
       'home',
+      'today',
       'automations',
       'clients',
       'messages',
@@ -72,6 +73,7 @@ describe('viewCatalog', () => {
       )
     ).toEqual({
       home: 'home_viewed',
+      today: 'today_viewed',
       automations: 'automations_viewed',
       clients: 'clients_viewed',
       messages: 'messages_viewed',

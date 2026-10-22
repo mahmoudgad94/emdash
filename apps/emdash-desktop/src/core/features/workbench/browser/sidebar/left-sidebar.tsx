@@ -1,5 +1,6 @@
 import {
   Clock,
+  ListChecks,
   FolderInput,
   MessageSquare,
   MessageSquareShare,
@@ -12,6 +13,7 @@ import { automationsViewDef } from '@core/features/automations/contributions/vie
 import { messagesViewDef } from '@core/features/messaging/contributions/views';
 import { clientsViewDef } from '@core/features/observed-sessions/contributions/views';
 import { settingsViewDef } from '@core/features/settings/contributions/views';
+import { todayViewDef } from '@core/features/today/contributions/views';
 import { useOpenModal } from '@core/manifests/browser/modal-api';
 import { BoundShortcut } from '@core/primitives/keybindings/browser/shortcut';
 import { WORKBENCH_BOTTOM_BAR_HEIGHT_PX } from '@core/primitives/layouts/api/workbench-layout';
@@ -80,6 +82,17 @@ export const LeftSidebar: React.FC = observer(function LeftSidebar() {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarSearchTrigger />
+            <SidebarMenuButton
+              isActive={isCurrentView(currentView, 'today')}
+              onClick={() => navigate(todayViewDef())}
+              aria-label="Today"
+              className="w-full justify-between"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <ListChecks className="h-5 w-5 shrink-0 sm:h-4 sm:w-4" />
+                <span className="truncate">Today</span>
+              </span>
+            </SidebarMenuButton>
             <SidebarMenuButton
               isActive={isCurrentView(currentView, 'clients')}
               onClick={() => navigate(clientsViewDef())}

@@ -4,11 +4,13 @@ import { clientsViewDef } from '@core/features/observed-sessions/contributions/v
 import { projectViewDef } from '@core/features/projects/contributions/views';
 import { settingsViewDef } from '@core/features/settings/contributions/views';
 import { taskViewDef } from '@core/features/tasks/contributions/views';
+import { todayViewDef } from '@core/features/today/contributions/views';
 import { homeViewDef } from '@core/features/workbench/contributions/views';
 import { defineViewCatalog } from '@core/primitives/views/api';
 
 export const viewCatalog = defineViewCatalog([
   homeViewDef,
+  todayViewDef,
   automationsViewDef,
   clientsViewDef,
   messagesViewDef,
