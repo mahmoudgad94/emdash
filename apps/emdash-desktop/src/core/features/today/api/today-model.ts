@@ -129,10 +129,11 @@ export function buildToday(input: TodayInput): TodayModel {
   const waitingByClient = new Map<string, number>();
   for (const conversation of attention) {
     const id = conversation.source.clientId;
-    waitingByClient.set(
-      id,
-      (waitingByClient.get(id) ?? 0) + Math.max(conversation.untriagedCount, 1)
-    );
+    // With the owner's own replies known, a chat that waits counts once; otherwise Core's count.
+    const count = input.ownReplies?.has(conversation.id)
+      ? 1
+      : Math.max(conversation.untriagedCount, 1);
+    waitingByClient.set(id, (waitingByClient.get(id) ?? 0) + count);
   }
   const clients = activeClients(input.clients)
     .map(
