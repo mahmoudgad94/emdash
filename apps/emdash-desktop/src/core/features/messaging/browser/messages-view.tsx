@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { settingsViewDef } from '@core/features/settings/contributions/views';
 import { Titlebar } from '@core/features/workbench/contributions/browser/Titlebar';
+import { SubjectProvider } from '@core/primitives/mementos/react';
 import {
   useCurrentViewParams,
   useNavigate,
@@ -25,6 +26,7 @@ import {
 import { describeMessagingFailure } from '../api/failure-messages';
 import { channelLabel, connectorBadge } from '../api/labels';
 import { draftsForChannel } from '../api/thread';
+import { clientThreadSubject } from '../contributions/subject';
 import { messagesViewDef } from '../contributions/views';
 import { AskClaudeButton } from './ask-claude-button';
 import { ConnectorDot } from './connector-dot';
@@ -198,7 +200,12 @@ export function MessagesView() {
                       {channelLabel(selected)}
                     </span>
                     <span className="flex-1" />
-                    <AskClaudeButton conversation={selected} />
+                    <SubjectProvider
+                      subject={clientThreadSubject({ conversationId: selected.id })}
+                      fallback={null}
+                    >
+                      <AskClaudeButton conversation={selected} />
+                    </SubjectProvider>
                     {badge && !badge.healthy && (
                       <Pill variant={badge.tone === 'error' ? 'error' : 'warning'}>
                         {badge.label}

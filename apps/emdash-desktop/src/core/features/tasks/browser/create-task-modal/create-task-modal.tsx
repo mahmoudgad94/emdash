@@ -56,6 +56,7 @@ export const CreateTaskModal = observer(function CreateTaskModal({
   initialPrompt,
   initialTaskName,
   useRepoRoot,
+  onTaskCreated,
 }: {
   projectId?: string;
   strategy?: CreateTaskStrategy;
@@ -67,6 +68,8 @@ export const CreateTaskModal = observer(function CreateTaskModal({
   initialTaskName?: string;
   /** Work in the project's own checkout instead of creating a new branch and worktree. */
   useRepoRoot?: boolean;
+  /** Called with the new task's project and id once Create is pressed. */
+  onTaskCreated?: (created: { projectId: string; taskId: string }) => void;
 }) {
   const { complete } = useModalController('taskModal');
   const selectedProjectId = useDefaultProjectId(projectId);
@@ -134,6 +137,7 @@ export const CreateTaskModal = observer(function CreateTaskModal({
     initialConversation,
     navigate,
     onCreated: complete,
+    onTaskCreated,
   });
   const createAvailability = selectedProjectId
     ? taskHostActionAvailability(selectedProjectId)

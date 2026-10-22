@@ -7,7 +7,10 @@ import {
 } from '@core/features/clients/api/browser/clients-queries';
 import { formatMinor } from '@core/features/clients/api/money';
 import { clientsStoreToken } from '@core/features/clients/contributions/app-store-tokens';
+import { taskViewDef } from '@core/features/tasks/contributions/views';
 import { useOpenModal } from '@core/manifests/browser/modal-api';
+import { useMemento } from '@core/primitives/mementos/react';
+import { useNavigate } from '@core/primitives/navigation/browser/navigation-hooks';
 import { getAppStores } from '@core/primitives/scoped-stores/browser';
 import {
   conversationMessagesQueryOptions,
@@ -18,6 +21,7 @@ import type { ConversationSummary } from '../api/schemas';
 import { draftsForChannel } from '../api/thread';
 import { orderRepos, pickTriageProject } from '../api/triage-project';
 import { buildTriagePrompt, triageTaskName } from '../api/triage-prompt';
+import { threadLinkMemento } from '../contributions/mementos';
 
 /**
  * Starts a Claude Code task in the client's own project that reads this conversation, works out
@@ -27,6 +31,8 @@ import { buildTriagePrompt, triageTaskName } from '../api/triage-prompt';
  */
 export function AskClaudeButton({ conversation }: { conversation: ConversationSummary }) {
   const openCreateTask = useOpenModal('taskModal');
+  const { navigate } = useNavigate();
+  const [link, setLink] = useMemento(threadLinkMemento);
   const clientsQuery = useQuery(clientsQueryOptions());
   const thread = useQuery(conversationMessagesQueryOptions(conversation.id));
   const needYou = useQuery(needYouQueryOptions());
@@ -80,19 +86,41 @@ export function AskClaudeButton({ conversation }: { conversation: ConversationSu
       initialPrompt: buildTriagePrompt(context),
       initialTaskName: triageTaskName(context),
       useRepoRoot: true,
+      onTaskCreated: ({ projectId: createdIn, taskId }) =>
+        setLink({
+          version: '1',
+          projectId: createdIn,
+          taskId,
+          linkedAt: new Date().toISOString(),
+        }),
     });
   };
 
+  const linked = link.projectId !== null && link.taskId !== null;
   return (
-    <Button
-      variant="secondary"
-      size="sm"
-      disabled={!client || !thread.data}
-      onClick={ask}
-      title="Claude reads this conversation, finds the project and drafts a reply. Nothing is sent."
-    >
-      <Sparkles className="size-3.5" />
-      Ask Claude
-    </Button>
+    <div className="flex items-center gap-1.5">
+      {linked && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() =>
+            navigate(taskViewDef({ projectId: link.projectId!, taskId: link.taskId! }))
+          }
+          title="Continue in the task that was started for this conversation."
+        >
+          Open task
+        </Button>
+      )}
+      <Button
+        variant={linked ? 'ghost' : 'secondary'}
+        size="sm"
+        disabled={!client || !thread.data}
+        onClick={ask}
+        title="Claude reads this conversation, finds the project and drafts a reply. Nothing is sent."
+      >
+        <Sparkles className="size-3.5" />
+        {linked ? 'Ask again' : 'Ask Claude'}
+      </Button>
+    </div>
   );
 }

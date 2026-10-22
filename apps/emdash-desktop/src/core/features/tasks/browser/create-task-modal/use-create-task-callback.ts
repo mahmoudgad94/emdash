@@ -13,6 +13,8 @@ interface UseCreateTaskCallbackParams {
   initialConversation: InitialConversationState;
   navigate: NavigateFnTyped;
   onCreated: () => void;
+  /** Told which task was created, for callers that keep a link to it. */
+  onTaskCreated?: (created: { projectId: string; taskId: string }) => void;
 }
 
 export function useCreateTaskCallback({
@@ -21,6 +23,7 @@ export function useCreateTaskCallback({
   initialConversation,
   navigate,
   onCreated,
+  onTaskCreated,
 }: UseCreateTaskCallbackParams): { handleCreateTask: () => void; canCreate: boolean } {
   const submitting = useRef(false);
   const canCreate = !!selectedProjectId && state.isValid && initialConversation.settingsReady;
@@ -54,9 +57,18 @@ export function useCreateTaskCallback({
       })
       .catch((e) => log.error('create task failed', e));
 
+    onTaskCreated?.({ projectId: selectedProjectId, taskId: id });
     navigate(taskViewDef({ projectId: selectedProjectId, taskId: id }));
     onCreated();
-  }, [selectedProjectId, state, initialConversation, navigate, onCreated, canCreate]);
+  }, [
+    selectedProjectId,
+    state,
+    initialConversation,
+    navigate,
+    onCreated,
+    onTaskCreated,
+    canCreate,
+  ]);
 
   return { handleCreateTask: () => void handleCreateTask(), canCreate };
 }
