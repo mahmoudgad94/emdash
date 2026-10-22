@@ -1,4 +1,4 @@
-import { EmptyState, Pill } from '@emdash/ui/react/components';
+import { EmptyState } from '@emdash/ui/react/components';
 import { ListView, PageLayout } from '@emdash/ui/react/patterns';
 import { Button, RelativeTime, Spinner } from '@emdash/ui/react/primitives';
 import { useQuery } from '@tanstack/react-query';
@@ -68,6 +68,16 @@ function Note({ children }: { children: React.ReactNode }) {
   return <p className="px-3 py-2.5 text-xs text-foreground-muted">{children}</p>;
 }
 
+function Dot({ tone }: { tone: 'warning' | 'info' | 'success' }) {
+  const color =
+    tone === 'warning'
+      ? 'bg-foreground-warning'
+      : tone === 'info'
+        ? 'bg-foreground-info'
+        : 'bg-foreground-success';
+  return <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${color}`} />;
+}
+
 function NeedsYouRow({
   item,
   isLast,
@@ -78,25 +88,15 @@ function NeedsYouRow({
   onOpen: () => void;
 }) {
   return (
-    <ListView.Row
-      bare
-      interactive
-      isLast={isLast}
-      divider="subtle"
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(event) => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        onOpen();
-      }}
-    >
+    <ListView.Row bare isLast={isLast} divider="subtle">
       <div className="flex min-h-14 items-center gap-3 px-3 py-2">
+        <Dot tone="warning" />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div className="flex items-center gap-2">
-            <span className="truncate text-sm text-foreground">{item.clientName}</span>
-            <span className="truncate text-xs text-foreground-muted">{item.from}</span>
+          <div className="flex items-baseline gap-2">
+            <span className="truncate text-sm font-medium text-foreground">{item.clientName}</span>
+            <span className="truncate text-xs text-foreground-muted">
+              {item.waiting > 1 ? `${item.from}, ${item.waiting} unanswered` : item.from}
+            </span>
           </div>
           <span className="truncate text-xs text-foreground-muted">
             {item.preview.replace(/\s+/g, ' ').trim()}
@@ -109,7 +109,9 @@ function NeedsYouRow({
             className="shrink-0 text-[11px] text-foreground-passive tabular-nums"
           />
         )}
-        {item.waiting > 1 && <Pill variant="warning">{item.waiting}</Pill>}
+        <Button variant="secondary" size="sm" onClick={onOpen}>
+          Reply
+        </Button>
       </div>
     </ListView.Row>
   );
@@ -119,13 +121,11 @@ function LiveRow({ item, isLast }: { item: LiveItem; isLast: boolean }) {
   return (
     <ListView.Row bare isLast={isLast} divider="subtle">
       <div className="flex min-h-10 items-center gap-3 px-3 py-1.5">
-        <Pill variant="success" dot>
-          Live
-        </Pill>
+        <Dot tone="success" />
         <span className="min-w-0 flex-1 truncate text-sm text-foreground">
           {item.clientName}
           <span className="text-foreground-muted">
-            {` · ${sourceLabel(item.source)}${item.branch ? `, ${item.branch}` : ''}, ${hostLabel(item.host)}`}
+            {` ${sourceLabel(item.source)}${item.branch ? `, ${item.branch}` : ''}, ${hostLabel(item.host)}`}
           </span>
         </span>
         <RelativeTime
@@ -139,22 +139,19 @@ function LiveRow({ item, isLast }: { item: LiveItem; isLast: boolean }) {
 }
 
 function ClientCard({ card, onOpen }: { card: ActiveClientCard; onOpen: () => void }) {
+  const parts = [
+    card.agreement ? (AGREEMENTS[card.agreement] ?? card.agreement) : 'No agreement',
+    card.live > 0 ? `${card.live} live` : null,
+    card.waiting > 0 ? `${card.waiting} waiting` : null,
+  ].filter((part): part is string => part !== null);
   return (
     <button
       type="button"
       onClick={onOpen}
       className="flex min-w-0 flex-col gap-1 rounded-lg border border-border bg-background-1 px-3 py-2.5 text-left hover:bg-background-2"
     >
-      <span className="truncate text-sm text-foreground">{card.name}</span>
-      <span className="flex flex-wrap items-center gap-1.5 text-xs text-foreground-muted">
-        {card.agreement ? (AGREEMENTS[card.agreement] ?? card.agreement) : 'No agreement'}
-        {card.live > 0 && (
-          <Pill variant="success" dot>
-            {card.live} live
-          </Pill>
-        )}
-        {card.waiting > 0 && <Pill variant="warning">{card.waiting} waiting</Pill>}
-      </span>
+      <span className="truncate text-sm font-medium text-foreground">{card.name}</span>
+      <span className="truncate text-xs text-foreground-muted">{parts.join(', ')}</span>
     </button>
   );
 }
@@ -230,27 +227,26 @@ export function TodayView() {
                     />
                   ))}
                   {model.drafts > 0 && (
-                    <ListView.Row
-                      bare
-                      interactive
-                      isLast
-                      divider="subtle"
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => navigate(messagesViewDef({ needYou: true }))}
-                      onKeyDown={(event) => {
-                        if (event.key !== 'Enter' && event.key !== ' ') return;
-                        event.preventDefault();
-                        navigate(messagesViewDef({ needYou: true }));
-                      }}
-                    >
-                      <div className="flex min-h-12 items-center gap-3 px-3 py-2">
-                        <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                          {model.drafts === 1
-                            ? '1 drafted reply is waiting for your approval'
-                            : `${model.drafts} drafted replies are waiting for your approval`}
-                        </span>
-                        <Pill variant="info">Approve in the Mac app</Pill>
+                    <ListView.Row bare isLast divider="subtle">
+                      <div className="flex min-h-14 items-center gap-3 px-3 py-2">
+                        <Dot tone="info" />
+                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                          <span className="truncate text-sm font-medium text-foreground">
+                            Draft waiting for your Touch ID
+                          </span>
+                          <span className="truncate text-xs text-foreground-muted">
+                            {model.drafts === 1
+                              ? '1 reply is saved and ready to approve.'
+                              : `${model.drafts} replies are saved and ready to approve.`}
+                          </span>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => navigate(messagesViewDef({ needYou: true }))}
+                        >
+                          Open approval
+                        </Button>
                       </div>
                     </ListView.Row>
                   )}
@@ -260,7 +256,14 @@ export function TodayView() {
             {model.heldStrangers > 0 && (
               <p className="-mt-3 px-1 text-xs text-foreground-muted">
                 {model.heldStrangers} messages from senders Core does not know are held back and
-                hidden.
+                hidden.{' '}
+                <button
+                  type="button"
+                  className="text-foreground underline-offset-2 hover:underline"
+                  onClick={() => navigate(messagesViewDef())}
+                >
+                  Review
+                </button>
               </p>
             )}
 
@@ -287,13 +290,16 @@ export function TodayView() {
                       onOpen={() => navigate(clientsViewDef({ clientId: card.id }))}
                     />
                   ))}
+                  {model.unlinked > 0 && (
+                    <div className="flex min-w-0 flex-col gap-1 rounded-lg border border-dashed border-border px-3 py-2.5">
+                      <span className="truncate text-sm text-foreground-muted">
+                        {model.unlinked} more {model.unlinked === 1 ? 'is' : 'are'} active on the
+                        dashboard
+                      </span>
+                      <span className="text-xs text-foreground-passive">Not set up yet</span>
+                    </div>
+                  )}
                 </div>
-              )}
-              {model.unlinked > 0 && (
-                <p className="px-1 pt-1 text-xs text-foreground-muted">
-                  {model.unlinked} more active {model.unlinked === 1 ? 'client is' : 'clients are'}{' '}
-                  on your dashboard but not set up in Core yet.
-                </p>
               )}
             </section>
           </>

@@ -39,7 +39,12 @@ function IncomingMessage({ message }: { message: ThreadMessage }) {
           </p>
         )}
       </div>
-      {message.heldReason && <Pill variant="warning">{HELD_NOTES[message.heldReason]}</Pill>}
+      {/* A registered contact is a real client: Core holding the message back is its own business,
+          not something to flag on every message. Strangers and suspicious messages keep the note. */}
+      {message.heldReason &&
+        (message.heldReason === 'injection_flagged' || message.sender === UNRECOGNIZED_SENDER) && (
+          <Pill variant="warning">{HELD_NOTES[message.heldReason]}</Pill>
+        )}
     </div>
   );
 }
