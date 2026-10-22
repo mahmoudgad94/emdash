@@ -37,7 +37,14 @@ export const INITIAL_AUTO_TRIAGE_STATE: AutoTriageState = {
 
 /** Starts a new day's count when the day has changed. */
 export function rollDay(state: AutoTriageState, today: string): AutoTriageState {
-  return state.day === today ? state : { ...state, day: today, started: 0 };
+  // A row saved before a field existed reads back without it; fill the gaps first.
+  const complete: AutoTriageState = {
+    ...state,
+    attempted: state.attempted ?? {},
+    pending: state.pending ?? {},
+    autoDraft: state.autoDraft ?? true,
+  };
+  return complete.day === today ? complete : { ...complete, day: today, started: 0 };
 }
 
 /** Fixes the baseline at the newest message seen the first time automation runs. */

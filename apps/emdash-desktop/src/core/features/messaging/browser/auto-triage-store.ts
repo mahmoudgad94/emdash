@@ -31,11 +31,7 @@ import { buildTriageContext } from '../api/triage-context';
 import { pickTriageProject } from '../api/triage-project';
 import { buildTriagePrompt, parseTriageResult, type TriageResult } from '../api/triage-prompt';
 import { readTriage, TRIAGE_GIVE_UP_MS } from '../api/triage-result';
-import {
-  autoTriageMemento,
-  threadLinkMemento,
-  threadTriageMemento,
-} from '../contributions/mementos';
+import { autoTriageMemento, threadTriageMemento } from '../contributions/mementos';
 import { clientThreadSubject } from '../contributions/subject';
 
 const TICK_MS = 60_000;
@@ -114,7 +110,7 @@ export class AutoTriageStore {
     await app.ready;
     try {
       const handle = app.handle(autoTriageMemento);
-      const pending = Object.entries(handle.value.pending).slice(0, MAX_PENDING_PER_TICK);
+      const pending = Object.entries(handle.value.pending ?? {}).slice(0, MAX_PENDING_PER_TICK);
       for (const [conversationId, entry] of pending) {
         const startedMs = Date.parse(entry.startedAt);
         const result = await this.findResult(conversationId, entry.clientId, startedMs);
@@ -136,7 +132,7 @@ export class AutoTriageStore {
           await thread.release();
         }
         handle.update((current) => {
-          const rest = { ...current.pending };
+          const rest = { ...(current.pending ?? {}) };
           delete rest[conversationId];
           return { ...current, pending: rest };
         });
@@ -269,23 +265,6 @@ export class AutoTriageStore {
         }
         const client = clients.clients.find((c) => c.id === conversation.source.clientId);
         if (!client) continue;
-
-        const thread = mementos.subject(clientThreadSubject({ conversationId: conversation.id }));
-        await thread.ready;
-        let alreadyLinked: boolean;
-        try {
-          alreadyLinked = thread.handle(threadLinkMemento).value.taskId !== null;
-        } finally {
-          await thread.release();
-        }
-        if (alreadyLinked) {
-          // Already being worked on: remember this message so it is not triaged again.
-          handle.update((current) => ({
-            ...current,
-            attempted: { ...current.attempted, [conversation.id]: conversation.lastSeq },
-          }));
-          continue;
-        }
 
         const [messages, work] = await Promise.all([
           fetchConversationMessages(conversation.id),

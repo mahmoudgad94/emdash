@@ -134,3 +134,21 @@ describe('shouldAutoDraft', () => {
     expect(shouldAutoDraft({ type: 'NOTE_TO_REMEMBER', draft: 'x' })).toBe(false);
   });
 });
+
+describe('an older saved row', () => {
+  it('reads back with the fields added since', () => {
+    const old = {
+      version: '1',
+      enabled: true,
+      baselineSeq: 49,
+      day: '2026-10-22',
+      started: 0,
+      attempted: { a: 1 },
+    } as unknown as AutoTriageState;
+    expect(rollDay(old, '2026-10-22')).toMatchObject({
+      pending: {},
+      autoDraft: true,
+      attempted: { a: 1 },
+    });
+  });
+});

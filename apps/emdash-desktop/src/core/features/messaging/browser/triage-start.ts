@@ -32,7 +32,7 @@ export async function recordTriageStart(
     app.handle(autoTriageMemento).update((current) => ({
       ...current,
       pending: {
-        ...current.pending,
+        ...(current.pending ?? {}),
         [started.conversationId]: {
           startedAt: now,
           clientId: started.clientId,
