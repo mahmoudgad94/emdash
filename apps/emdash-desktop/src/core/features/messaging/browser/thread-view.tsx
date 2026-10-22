@@ -190,6 +190,15 @@ export function ThreadView({
     [coreless, query.data, showHeld, older, ownReplies.data]
   );
 
+  // The newest message is what the owner opens a chat for: start at the bottom, and stay put when
+  // earlier messages are added above.
+  const endRef = useRef<HTMLDivElement>(null);
+  const latestKey = sections.at(-1)?.messages.at(-1)?.seq;
+  useEffect(() => {
+    if (latestKey === undefined) return;
+    endRef.current?.scrollIntoView({ block: 'end' });
+  }, [latestKey]);
+
   if (!coreless && query.isPending) {
     return (
       <div className="flex h-48 items-center justify-center">
@@ -279,6 +288,7 @@ export function ThreadView({
           ))}
         </section>
       )}
+      <div ref={endRef} />
     </div>
   );
 }
