@@ -19,6 +19,7 @@ export type AutoTriageState = {
   started: number;
   /** The last message each conversation was triaged at, so one message is triaged once. */
   attempted: Record<string, number>;
+  autoDraft: boolean;
   /** Triage tasks whose answer has not been read back yet, by conversation. */
   pending: Record<string, { startedAt: string; clientId: string; projectId: string }>;
 };
@@ -30,6 +31,7 @@ export const INITIAL_AUTO_TRIAGE_STATE: AutoTriageState = {
   day: '',
   started: 0,
   attempted: {},
+  autoDraft: true,
   pending: {},
 };
 
@@ -102,4 +104,9 @@ export function recordAutoTriage(
       delete attempted[key];
   }
   return { ...state, started: state.started + 1, attempted };
+}
+
+/** Whether Claude's answer should become a draft by itself: there is a reply and it is not a note. */
+export function shouldAutoDraft(result: { type: string; draft: string }): boolean {
+  return result.draft.trim() !== '' && result.type !== 'NOTE_TO_REMEMBER';
 }

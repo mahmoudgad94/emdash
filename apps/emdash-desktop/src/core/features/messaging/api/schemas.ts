@@ -130,6 +130,14 @@ export const historySchema = z.object({
   available: z.boolean(),
 });
 
+export const runTriageInputSchema = z.object({
+  /** The project folder on this Mac that Claude reads. */
+  cwd: z.string().min(1),
+  prompt: z.string().min(1),
+});
+
+export const runTriageResultSchema = z.object({ text: z.string() });
+
 export const conversationsInputSchema = z.object({ clientId: z.string().optional() });
 export const conversationInputSchema = z.object({ id: z.string() });
 

@@ -6,6 +6,7 @@ import {
   fetchSessionTranscript,
 } from '@core/features/observed-sessions/api/browser/observed-sessions-queries';
 import { log } from '@core/primitives/logging/browser/logger';
+import type { MementoValue } from '@core/primitives/mementos/api';
 import type { MementoClient } from '@core/primitives/mementos/browser';
 import { appSubject } from '@core/primitives/subjects/api';
 import {
@@ -13,6 +14,7 @@ import {
   eligibleForAutoTriage,
   recordAutoTriage,
   rollDay,
+  shouldAutoDraft,
   withBaseline,
 } from '../api/auto-triage';
 import {
@@ -20,12 +22,14 @@ import {
   fetchConversations,
   fetchHistory,
   fetchNeedYou,
+  saveDraft,
 } from '../api/browser/messaging-queries';
+import { draftInputFor } from '../api/draft-payload';
 import { replyState } from '../api/reply-state';
 import type { ConversationSummary } from '../api/schemas';
 import { buildTriageContext } from '../api/triage-context';
 import { pickTriageProject } from '../api/triage-project';
-import { buildTriagePrompt, triageTaskName, type TriageResult } from '../api/triage-prompt';
+import { buildTriagePrompt, parseTriageResult, type TriageResult } from '../api/triage-prompt';
 import { readTriage, TRIAGE_GIVE_UP_MS } from '../api/triage-result';
 import {
   autoTriageMemento,
@@ -33,7 +37,6 @@ import {
   threadTriageMemento,
 } from '../contributions/mementos';
 import { clientThreadSubject } from '../contributions/subject';
-import { recordTriageStart } from './triage-start';
 
 const TICK_MS = 60_000;
 const FIRST_TICK_MS = 20_000;
@@ -47,11 +50,10 @@ export type AutoTriageDeps = {
   memento: () => MementoClient;
   /** Open Emdash projects matched to a client, from the Clients store. */
   matches: () => ReadonlyMap<string, ProjectMatch>;
-  startTask: (params: {
-    projectId: string;
-    name: string;
-    prompt: string;
-  }) => Promise<string | undefined>;
+  /** The folder of an open project on this Mac; undefined for remote or missing projects. */
+  projectPath: (projectId: string) => string | undefined;
+  /** Runs Claude Code once, read-only, in a folder and returns its answer. */
+  runTriage: (input: { cwd: string; prompt: string }) => Promise<string>;
   now?: () => Date;
 };
 
@@ -59,9 +61,9 @@ const dayOf = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 /**
- * Starts a Claude Code triage task by itself when a new client message needs the owner and the
- * client has an open project, then reads Claude's answer back from the session Core captured, so
- * the suggested reply shows up in Messages. At most one task per minute, a small daily limit, only
+ * When a new client message needs the owner and the client has an open project on this Mac, has
+ * Claude Code read the conversation and the project in the background (read-only, no task) and
+ * saves its reply as a draft. It also reads back the answers of triage tasks started by hand. At most one task per minute, a small daily limit, only
  * for messages that arrive after it was first switched on, and every task is linked to its
  * conversation so work continues there. It runs while the app is open and never sends anything.
  */
@@ -164,6 +166,57 @@ export class AutoTriageStore {
     return undefined;
   }
 
+  /**
+   * Has Claude read the conversation and the project in the background, with no task, and keeps
+   * its answer on the conversation. When drafting is on, the reply is saved as a draft right away;
+   * sending it still needs the owner's Touch ID.
+   */
+  private async draftReply(
+    mementos: MementoClient,
+    conversation: ConversationSummary,
+    cwd: string,
+    prompt: string,
+    autoDraft: boolean
+  ): Promise<void> {
+    const startedAt = new Date().toISOString();
+    const setTriage = async (value: MementoValue<typeof threadTriageMemento>) => {
+      const thread = mementos.subject(clientThreadSubject({ conversationId: conversation.id }));
+      await thread.ready;
+      try {
+        const triage = thread.handle(threadTriageMemento);
+        triage.update(value);
+        await triage.flush();
+      } finally {
+        await thread.release();
+      }
+    };
+    await setTriage({ version: '1', status: 'waiting', startedAt, result: null });
+    let result: TriageResult | undefined;
+    try {
+      result = parseTriageResult(await this.deps.runTriage({ cwd, prompt }));
+    } catch (error) {
+      log.warn('background triage did not finish', error);
+    }
+    if (!result) {
+      await setTriage({ version: '1', status: 'failed', startedAt, result: null });
+      return;
+    }
+    const input =
+      autoDraft && shouldAutoDraft(result)
+        ? draftInputFor(conversation, result.draft, true)
+        : undefined;
+    let drafted = false;
+    if (input) {
+      try {
+        await saveDraft(input);
+        drafted = true;
+      } catch (error) {
+        log.warn('could not save the drafted reply', error);
+      }
+    }
+    await setTriage({ version: '1', status: drafted ? 'drafted' : 'ready', startedAt, result });
+  }
+
   /** The owner already answered the client's last message from their phone. */
   private async ownerAnsweredSince(conversation: ConversationSummary): Promise<boolean> {
     if (conversation.provider !== 'whatsapp') return false;
@@ -245,21 +298,18 @@ export class AutoTriageStore {
           work,
           drafts,
         });
-        const taskId = await this.deps.startTask({
-          projectId,
-          name: triageTaskName(context),
-          prompt: buildTriagePrompt(context),
-        });
-        if (taskId === undefined) continue;
+        const cwd = this.deps.projectPath(projectId);
+        if (cwd === undefined) continue;
         handle.update((current) =>
           recordAutoTriage(current, conversation.id, conversation.lastSeq)
         );
-        await recordTriageStart(mementos, {
-          conversationId: conversation.id,
-          clientId: client.id,
-          projectId,
-          taskId,
-        });
+        await this.draftReply(
+          mementos,
+          conversation,
+          cwd,
+          buildTriagePrompt(context),
+          handle.value.autoDraft
+        );
         return;
       }
     } finally {

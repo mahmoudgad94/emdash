@@ -5,6 +5,7 @@ import {
   canStartAutoTriage,
   eligibleForAutoTriage,
   recordAutoTriage,
+  shouldAutoDraft,
   rollDay,
   withBaseline,
   type AutoTriageState,
@@ -123,5 +124,13 @@ describe('the daily limit', () => {
     expect(Object.keys(state.attempted)).toHaveLength(200);
     expect(state.attempted.c259).toBe(359);
     expect(state.attempted.c0).toBeUndefined();
+  });
+});
+
+describe('shouldAutoDraft', () => {
+  it('drafts a reply but not an empty one or a note to remember', () => {
+    expect(shouldAutoDraft({ type: 'REPLY_ONLY', draft: 'Thanks, on it.' })).toBe(true);
+    expect(shouldAutoDraft({ type: 'WAITING_ON_CLIENT', draft: '  ' })).toBe(false);
+    expect(shouldAutoDraft({ type: 'NOTE_TO_REMEMBER', draft: 'x' })).toBe(false);
   });
 });
