@@ -7,11 +7,9 @@ import {
   clientsQueryOptions,
   unlinkedClientsQueryOptions,
 } from '@core/features/clients/api/browser/clients-queries';
-import {
-  conversationsQueryOptions,
-  needYouQueryOptions,
-} from '@core/features/messaging/api/browser/messaging-queries';
+import { needYouQueryOptions } from '@core/features/messaging/api/browser/messaging-queries';
 import { useOwnLastReplies } from '@core/features/messaging/api/browser/own-replies';
+import { useClientConversations } from '@core/features/messaging/api/browser/use-client-conversations';
 import type { ConversationSummary } from '@core/features/messaging/api/schemas';
 import { TriageHint } from '@core/features/messaging/contributions/triage-hint';
 import { messagesViewDef } from '@core/features/messaging/contributions/views';
@@ -164,24 +162,24 @@ function ClientCard({ card, onOpen }: { card: ActiveClientCard; onOpen: () => vo
 
 export function TodayView() {
   const { navigate } = useNavigate();
-  const conversations = useQuery(conversationsQueryOptions());
+  const { conversations: allConversations, query: conversations } = useClientConversations();
   const needYou = useQuery(needYouQueryOptions());
   const summary = useQuery(workSummaryQueryOptions());
   const clients = useQuery(clientsQueryOptions());
   const unlinked = useQuery(unlinkedClientsQueryOptions());
-  const ownReplies = useOwnLastReplies(conversations.data?.conversations ?? NO_CONVERSATIONS);
+  const ownReplies = useOwnLastReplies(allConversations ?? NO_CONVERSATIONS);
 
   const model = useMemo(
     () =>
       buildToday({
-        conversations: conversations.data?.conversations ?? [],
+        conversations: allConversations ?? [],
         drafts: needYou.data?.drafts ?? [],
         sessions: summary.data?.active ?? [],
         clients: clients.data?.clients ?? [],
         unlinked: unlinked.data?.clients ?? [],
         ownReplies,
       }),
-    [conversations.data, needYou.data, summary.data, clients.data, unlinked.data, ownReplies]
+    [allConversations, needYou.data, summary.data, clients.data, unlinked.data, ownReplies]
   );
 
   const unreachable =

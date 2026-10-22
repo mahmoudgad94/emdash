@@ -96,7 +96,9 @@ export function buildToday(input: TodayInput): TodayModel {
         from: `${conversation.lastMessage?.sender ?? 'Someone'}, ${providerOf(conversation)}`,
         preview: conversation.lastMessage?.text ?? '',
         at: conversation.lastMessage?.at ?? null,
-        waiting: Math.max(conversation.untriagedCount, 1),
+        waiting: input.ownReplies?.has(conversation.id)
+          ? 1
+          : Math.max(conversation.untriagedCount, 1),
         conversationId: conversation.id,
       })
     );

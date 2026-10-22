@@ -1,9 +1,8 @@
 import { EmptyState, Pill } from '@emdash/ui/react/components';
 import { PageLayout } from '@emdash/ui/react/patterns';
 import { Button, SearchInput, Spinner } from '@emdash/ui/react/primitives';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { clientsQueryOptions } from '@core/features/clients/api/browser/clients-queries';
 import { settingsViewDef } from '@core/features/settings/contributions/views';
 import { Titlebar } from '@core/features/workbench/contributions/browser/Titlebar';
 import { SubjectProvider } from '@core/primitives/mementos/react';
@@ -13,18 +12,13 @@ import {
 } from '@core/primitives/navigation/browser/navigation-hooks';
 import { defineViewRuntime } from '@core/primitives/views/react';
 import {
-  connectorsQueryOptions,
   conversationsQueryOptions,
-  fetchHistory,
   MessagingQueryError,
   needYouQueryOptions,
 } from '../api/browser/messaging-queries';
 import { useOwnLastReplies } from '../api/browser/own-replies';
-import {
-  clientWhatsAppChannels,
-  isLocalConversation,
-  localClientConversations,
-} from '../api/client-chats';
+import { useClientConversations } from '../api/browser/use-client-conversations';
+import { isLocalConversation } from '../api/client-chats';
 import {
   filterConversations,
   findConversation,
@@ -35,7 +29,7 @@ import {
 import { describeMessagingFailure } from '../api/failure-messages';
 import { channelLabel, connectorBadge } from '../api/labels';
 import { replyState } from '../api/reply-state';
-import type { ConversationSummary, HistoryMessage } from '../api/schemas';
+import type { ConversationSummary } from '../api/schemas';
 import { draftsForChannel } from '../api/thread';
 import { clientThreadSubject } from '../contributions/subject';
 import { messagesViewDef } from '../contributions/views';
@@ -91,49 +85,7 @@ export function MessagesView() {
   const [search, setSearch] = useState('');
   const [showAll, setShowAll] = useState(true);
 
-  const clientsQuery = useQuery(clientsQueryOptions());
-  const connectorsQuery = useQuery(connectorsQueryOptions());
-  // Client chats Core has no messages for yet still belong in the list, read from WhatsApp history.
-  const clientChannels = useMemo(
-    () => clientWhatsAppChannels(clientsQuery.data?.clients ?? []),
-    [clientsQuery.data]
-  );
-  const lastMessages = useQueries({
-    queries: clientChannels.map(({ channel }) => ({
-      queryKey: ['clientops', 'messaging', 'history', 'last', channel.channel] as const,
-      queryFn: () => fetchHistory({ channel: channel.channel, limit: 1 }),
-      staleTime: 60_000,
-      retry: false,
-      refetchOnWindowFocus: false,
-    })),
-    combine: (results) => results.map((result) => result.data?.messages.at(-1)),
-  });
-  const lastByChannel = useMemo(() => {
-    const map = new Map<string, HistoryMessage>();
-    clientChannels.forEach(({ channel }, index) => {
-      const last = lastMessages[index];
-      if (last) map.set(channel.channel, last);
-    });
-    return map;
-  }, [clientChannels, lastMessages]);
-  const captured = conversationsQuery.data?.conversations;
-  const whatsappState =
-    connectorsQuery.data?.connectors.find((c) => c.provider === 'whatsapp')?.state ?? null;
-  const all = useMemo(
-    () =>
-      captured === undefined
-        ? undefined
-        : [
-            ...captured,
-            ...localClientConversations(
-              clientsQuery.data?.clients ?? [],
-              captured,
-              lastByChannel,
-              whatsappState
-            ),
-          ],
-    [captured, clientsQuery.data, lastByChannel, whatsappState]
-  );
+  const { conversations: all } = useClientConversations();
   const waitingDrafts = needYouQuery.data?.drafts;
   const ownReplies = useOwnLastReplies(all ?? EMPTY_CONVERSATIONS);
   // What needs the owner: accepted messages nobody has triaged, or a draft waiting for approval.
