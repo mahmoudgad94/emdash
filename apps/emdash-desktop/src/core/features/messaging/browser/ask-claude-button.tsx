@@ -8,6 +8,7 @@ import {
 import { clientsStoreToken } from '@core/features/clients/contributions/app-store-tokens';
 import { taskViewDef } from '@core/features/tasks/contributions/views';
 import { useOpenModal } from '@core/manifests/browser/modal-api';
+import { getMementoClient } from '@core/primitives/mementos/browser';
 import { useMemento } from '@core/primitives/mementos/react';
 import { useNavigate } from '@core/primitives/navigation/browser/navigation-hooks';
 import { getAppStores } from '@core/primitives/scoped-stores/browser';
@@ -20,6 +21,7 @@ import { buildTriageContext } from '../api/triage-context';
 import { pickTriageProject } from '../api/triage-project';
 import { buildTriagePrompt, triageTaskName } from '../api/triage-prompt';
 import { threadLinkMemento } from '../contributions/mementos';
+import { recordTriageStart } from './triage-start';
 
 /**
  * Starts a Claude Code task in the client's own project that reads this conversation, works out
@@ -30,7 +32,7 @@ import { threadLinkMemento } from '../contributions/mementos';
 export function AskClaudeButton({ conversation }: { conversation: ConversationSummary }) {
   const openCreateTask = useOpenModal('taskModal');
   const { navigate } = useNavigate();
-  const [link, setLink] = useMemento(threadLinkMemento);
+  const [link] = useMemento(threadLinkMemento);
   const clientsQuery = useQuery(clientsQueryOptions());
   const thread = useQuery(conversationMessagesQueryOptions(conversation.id));
   const needYou = useQuery(needYouQueryOptions());
@@ -66,11 +68,11 @@ export function AskClaudeButton({ conversation }: { conversation: ConversationSu
       initialTaskName: triageTaskName(context),
       useRepoRoot: true,
       onTaskCreated: ({ projectId: createdIn, taskId }) =>
-        setLink({
-          version: '1',
+        void recordTriageStart(getMementoClient(), {
+          conversationId: conversation.id,
+          clientId: client.id,
           projectId: createdIn,
           taskId,
-          linkedAt: new Date().toISOString(),
         }),
     });
   };

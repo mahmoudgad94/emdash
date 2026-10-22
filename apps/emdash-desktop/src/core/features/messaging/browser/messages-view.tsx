@@ -34,6 +34,7 @@ import { ConversationList } from './conversation-list';
 import { NeedYouSheet } from './need-you-sheet';
 import { ReplyComposer } from './reply-composer';
 import { ThreadView } from './thread-view';
+import { TriageSuggestion } from './triage-suggestion';
 
 function failureCode(error: unknown): string {
   return error instanceof MessagingQueryError ? error.code : 'unknown';
@@ -190,7 +191,10 @@ export function MessagesView() {
             </aside>
             <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
               {selected ? (
-                <>
+                <SubjectProvider
+                  subject={clientThreadSubject({ conversationId: selected.id })}
+                  fallback={null}
+                >
                   <header className="flex shrink-0 items-center gap-2">
                     <ConnectorDot state={selected.connector.state} />
                     <h2 className="text-md min-w-0 truncate font-medium text-foreground">
@@ -200,12 +204,7 @@ export function MessagesView() {
                       {channelLabel(selected)}
                     </span>
                     <span className="flex-1" />
-                    <SubjectProvider
-                      subject={clientThreadSubject({ conversationId: selected.id })}
-                      fallback={null}
-                    >
-                      <AskClaudeButton conversation={selected} />
-                    </SubjectProvider>
+                    <AskClaudeButton conversation={selected} />
                     {badge && !badge.healthy && (
                       <Pill variant={badge.tone === 'error' ? 'error' : 'warning'}>
                         {badge.label}
@@ -215,12 +214,13 @@ export function MessagesView() {
                   <div className="min-h-0 flex-1 overflow-y-auto pr-1">
                     <ThreadView key={selected.id} conversationId={selected.id} drafts={drafts} />
                   </div>
+                  <TriageSuggestion conversation={selected} />
                   <ReplyComposer
                     key={selected.id}
                     conversation={selected}
                     onOpenNeedYou={openNeedYou}
                   />
-                </>
+                </SubjectProvider>
               ) : (
                 <EmptyState
                   bare

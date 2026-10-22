@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { buildTriagePrompt, triageTaskName, type TriageContext } from './triage-prompt';
+import {
+  buildTriagePrompt,
+  parseTriageResult,
+  triageMarker,
+  triageTaskName,
+  type TriageContext,
+} from './triage-prompt';
 
 const context: TriageContext = {
+  conversationId: 'cv1.abc',
   clientName: 'FriendsApp',
   agreement: 'per_task',
   contacts: ['Stephen Ellis'],
@@ -62,5 +69,38 @@ describe('triageTaskName', () => {
   it('names the run after the client and the last sender', () => {
     expect(triageTaskName(context)).toBe('Triage FriendsApp: Stephen Ellis');
     expect(triageTaskName({ clientName: 'Acme', messages: [] })).toBe('Triage Acme');
+  });
+});
+
+describe('the result block', () => {
+  it('opens with a marker for the conversation and asks for the result block', () => {
+    const prompt = buildTriagePrompt(context);
+    expect(prompt.startsWith(triageMarker('cv1.abc'))).toBe(true);
+    expect(prompt).toContain('CLIENT_OPS_RESULT');
+    expect(prompt).toContain('END_CLIENT_OPS_RESULT');
+  });
+
+  it('reads the last block of an answer, with or without a code fence', () => {
+    const answer = `Looks like we wait.\nCLIENT_OPS_RESULT\n\`\`\`json\n{"type":"waiting_on_client","project":"/p","first":"VAT number","draft":"No rush, send it when ready.","next":"Check back Monday"}\n\`\`\`\nEND_CLIENT_OPS_RESULT`;
+    expect(parseTriageResult(answer)).toEqual({
+      type: 'WAITING_ON_CLIENT',
+      project: '/p',
+      first: 'VAT number',
+      draft: 'No rush, send it when ready.',
+      next: 'Check back Monday',
+    });
+  });
+
+  it('keeps waiting while the block is missing, broken or empty', () => {
+    expect(parseTriageResult('still thinking')).toBeUndefined();
+    expect(parseTriageResult('CLIENT_OPS_RESULT\n{oops\nEND_CLIENT_OPS_RESULT')).toBeUndefined();
+    expect(
+      parseTriageResult(
+        'CLIENT_OPS_RESULT\n{"type":"NEW_TASK","draft":"","next":""}\nEND_CLIENT_OPS_RESULT'
+      )
+    ).toBeUndefined();
+    expect(
+      parseTriageResult('CLIENT_OPS_RESULT\n{"type":"MAYBE","draft":"x"}\nEND_CLIENT_OPS_RESULT')
+    ).toBeUndefined();
   });
 });

@@ -27,6 +27,7 @@ export function buildTriageContext(input: {
       ]
     : [];
   return {
+    conversationId: conversation.id,
     clientName: client.name,
     agreement: client.agreement,
     contacts: client.people.map((p) => p.name),

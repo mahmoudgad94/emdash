@@ -19,6 +19,8 @@ export type AutoTriageState = {
   started: number;
   /** The last message each conversation was triaged at, so one message is triaged once. */
   attempted: Record<string, number>;
+  /** Triage tasks whose answer has not been read back yet, by conversation. */
+  pending: Record<string, { startedAt: string; clientId: string; projectId: string }>;
 };
 
 export const INITIAL_AUTO_TRIAGE_STATE: AutoTriageState = {
@@ -28,6 +30,7 @@ export const INITIAL_AUTO_TRIAGE_STATE: AutoTriageState = {
   day: '',
   started: 0,
   attempted: {},
+  pending: {},
 };
 
 /** Starts a new day's count when the day has changed. */

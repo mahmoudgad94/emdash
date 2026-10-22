@@ -2,6 +2,7 @@ import { acpDraftMemento } from '@core/features/conversations/contributions/meme
 import {
   autoTriageMemento,
   threadLinkMemento,
+  threadTriageMemento,
 } from '@core/features/messaging/contributions/mementos';
 import {
   projectViewMemento,
@@ -34,6 +35,7 @@ export const mementoCatalog: readonly MementoCatalogEntry[] = [
   acpDraftMemento,
   threadLinkMemento,
   autoTriageMemento,
+  threadTriageMemento,
   projectViewMemento,
   workspaceChromeMemento,
   taskChromeMemento,

@@ -1,6 +1,8 @@
 export type TriageMessage = { sender: string; at: string | null; text: string };
 
 export type TriageContext = {
+  /** Core's id for the conversation; lets the answer be matched back to it. */
+  conversationId: string;
   clientName: string;
   agreement: string | null;
   contacts: readonly string[];
@@ -15,6 +17,69 @@ export type TriageContext = {
   /** Replies already drafted and waiting for approval. */
   pendingDrafts: readonly string[];
 };
+
+export const TRIAGE_TYPES = [
+  'NEW_TASK',
+  'REPLY_ONLY',
+  'WAITING_ON_CLIENT',
+  'QUESTION_FOR_ME',
+  'NOTE_TO_REMEMBER',
+] as const;
+export type TriageType = (typeof TRIAGE_TYPES)[number];
+
+export type TriageResult = {
+  type: TriageType;
+  /** The checkout the message is about, as Claude identified it. */
+  project: string;
+  /** What must happen first, or what we are waiting on. */
+  first: string;
+  /** The reply to the client, for the owner to review. */
+  draft: string;
+  /** One line: what to do next. */
+  next: string;
+};
+
+/** The line that opens a triage prompt, so its session can be found again. */
+export const triageMarker = (conversationId: string) => `[client-ops triage ${conversationId}]`;
+
+const RESULT_START = 'CLIENT_OPS_RESULT';
+const RESULT_END = 'END_CLIENT_OPS_RESULT';
+
+const str = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+
+/**
+ * Reads the result block Claude ends its answer with. Returns undefined while there is none or it
+ * is unreadable, so the caller keeps waiting. The last block wins if the answer was revised.
+ */
+export function parseTriageResult(text: string): TriageResult | undefined {
+  const end = text.lastIndexOf(RESULT_END);
+  const start = end < 0 ? -1 : text.lastIndexOf(RESULT_START, end);
+  if (start < 0 || end < 0) return undefined;
+  const body = text
+    .slice(start + RESULT_START.length, end)
+    .replace(/```(?:json)?/g, '')
+    .trim();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return undefined;
+  }
+  if (typeof parsed !== 'object' || parsed === null) return undefined;
+  const record = parsed as Record<string, unknown>;
+  const type = str(record.type).toUpperCase();
+  if (!(TRIAGE_TYPES as readonly string[]).includes(type)) return undefined;
+  const draft = str(record.draft);
+  const next = str(record.next);
+  if (draft === '' && next === '') return undefined;
+  return {
+    type: type as TriageType,
+    project: str(record.project),
+    first: str(record.first),
+    draft,
+    next,
+  };
+}
 
 const MAX_MESSAGES = 12;
 const MAX_TEXT = 600;
@@ -45,6 +110,7 @@ export function buildTriagePrompt(context: TriageContext): string {
           .map((m) => `[${m.at ?? 'undated'}] ${m.sender}: ${clip(m.text, MAX_TEXT)}`)
           .join('\n');
   const lines = [
+    triageMarker(context.conversationId),
     `You are helping me, a freelance developer, triage a client conversation. Client: ${context.clientName}${context.agreement ? ` (${context.agreement})` : ''}. Channel: ${context.channel}. Project: ${context.projectName}.`,
     context.contacts.length > 0 ? `Client contacts: ${context.contacts.join(', ')}.` : '',
     '',
@@ -71,7 +137,12 @@ export function buildTriagePrompt(context: TriageContext): string {
     "4. Draft reply: the message I should send, short, human and plain, in the client's language. Not formal, not automated.",
     '5. Next step for me, in one line.',
     '',
-    'Rules: you may read files and run read-only commands. Do not change code, do not commit or push, and do not send or message anyone. The draft is text for me to review.',
+    `Finish your answer with exactly one result block, on its own lines, so my app can read it:`,
+    RESULT_START,
+    '{"type":"<one of the five types>","project":"<checkout path>","first":"<what comes first or what we wait on, or empty>","draft":"<the reply to send, or empty if none is needed>","next":"<one line>"}',
+    RESULT_END,
+    '',
+    'Rules: use the Read, Glob and Grep tools to look around, and avoid commands that need approval, because nobody is watching this session. You may run plain read-only commands. Do not change code, do not commit or push, and do not send or message anyone. The draft is text for me to review.',
   ];
   return lines.filter((line, index) => line !== '' || lines[index - 1] !== '').join('\n');
 }
