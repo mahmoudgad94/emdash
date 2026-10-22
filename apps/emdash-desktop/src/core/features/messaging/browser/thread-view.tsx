@@ -1,7 +1,7 @@
 import { EmptyState, Markdown, Pill } from '@emdash/ui/react/components';
 import { Button, Spinner } from '@emdash/ui/react/primitives';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMarkdownLinkOpener } from '@core/primitives/external-links/browser';
 import {
   conversationMessagesQueryOptions,
@@ -134,7 +134,7 @@ export function ThreadView({
   const [olderState, setOlderState] = useState<
     'idle' | 'loading' | 'more' | 'done' | 'unavailable'
   >('idle');
-  const loadOlder = async () => {
+  const loadOlder = useCallback(async () => {
     if (channel === undefined || olderState === 'loading') return;
     setOlderState('loading');
     try {
@@ -152,7 +152,7 @@ export function ThreadView({
     } catch {
       setOlderState('unavailable');
     }
-  };
+  }, [channel, olderState, older, oldestCore]);
   // Messages Core holds back from senders it does not know are not the owner's to answer, so
   // they stay folded away unless asked for. A held message from a registered contact stays visible.
   const isStranger = (message: ThreadMessage) =>
@@ -163,10 +163,12 @@ export function ThreadView({
     [query.data]
   );
   // A chat Core has not captured opens on its latest history right away, once.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const autoLoaded = useRef(false);
   useEffect(() => {
-    if (coreless) void loadOlder();
-  }, [coreless]);
+    if (!coreless || autoLoaded.current) return;
+    autoLoaded.current = true;
+    void loadOlder();
+  }, [coreless, loadOlder]);
 
   const sections = useMemo(
     () =>
