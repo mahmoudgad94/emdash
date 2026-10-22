@@ -25,6 +25,12 @@ const clip = (text: string, max: number) => {
   return flat.length <= max ? flat : `${flat.slice(0, max - 1).trimEnd()}…`;
 };
 
+/** The task name for a triage run, e.g. "Triage FriendsApp: Stephen Ellis". */
+export function triageTaskName(context: Pick<TriageContext, 'clientName' | 'messages'>): string {
+  const last = context.messages.at(-1);
+  return last ? `Triage ${context.clientName}: ${last.sender}` : `Triage ${context.clientName}`;
+}
+
 /**
  * The prompt that asks Claude to triage a client conversation: what kind of message it is, which
  * project and checkout it belongs to, what must happen or be waited for first, and a draft reply.

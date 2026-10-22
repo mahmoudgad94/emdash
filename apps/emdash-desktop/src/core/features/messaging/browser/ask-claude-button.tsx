@@ -17,7 +17,7 @@ import { channelLabel, UNRECOGNIZED_SENDER } from '../api/labels';
 import type { ConversationSummary } from '../api/schemas';
 import { draftsForChannel } from '../api/thread';
 import { orderRepos, pickTriageProject } from '../api/triage-project';
-import { buildTriagePrompt } from '../api/triage-prompt';
+import { buildTriagePrompt, triageTaskName } from '../api/triage-prompt';
 
 /**
  * Starts a Claude Code task in the client's own project that reads this conversation, works out
@@ -75,7 +75,12 @@ export function AskClaudeButton({ conversation }: { conversation: ConversationSu
         channel: conversation.source.channel,
       }).map((d) => d.text),
     };
-    void openCreateTask({ projectId, initialPrompt: buildTriagePrompt(context) });
+    void openCreateTask({
+      projectId,
+      initialPrompt: buildTriagePrompt(context),
+      initialTaskName: triageTaskName(context),
+      useRepoRoot: true,
+    });
   };
 
   return (

@@ -54,6 +54,8 @@ export const CreateTaskModal = observer(function CreateTaskModal({
   initialPR,
   initialWorkspaceId,
   initialPrompt,
+  initialTaskName,
+  useRepoRoot,
 }: {
   projectId?: string;
   strategy?: CreateTaskStrategy;
@@ -61,6 +63,10 @@ export const CreateTaskModal = observer(function CreateTaskModal({
   initialWorkspaceId?: string;
   /** A prompt the conversation starts with, prepared by the caller. */
   initialPrompt?: string;
+  /** A name for the task, instead of a generated one. */
+  initialTaskName?: string;
+  /** Work in the project's own checkout instead of creating a new branch and worktree. */
+  useRepoRoot?: boolean;
 }) {
   const { complete } = useModalController('taskModal');
   const selectedProjectId = useDefaultProjectId(projectId);
@@ -109,7 +115,11 @@ export const CreateTaskModal = observer(function CreateTaskModal({
     repositoryWorkspaceId,
     resolvedInitialPR,
     defaults.linkedType,
-    initialWorkspaceId
+    initialWorkspaceId,
+    {
+      taskName: initialTaskName,
+      workspace: useRepoRoot ? { mode: 'existing', presetId: 'repo-root' } : undefined,
+    }
   );
 
   const { includeIssueContextByDefault } = useTaskSettings();

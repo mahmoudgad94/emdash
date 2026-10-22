@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { getTasksWireClient } from '@core/features/tasks/api/browser/client';
 import { useTaskName } from '@core/features/tasks/api/browser/create-task-modal/use-task-name';
 import { useWorkspaceConfig } from '@core/features/tasks/api/browser/create-task-modal/use-workspace-config';
+import type { WorkspaceConfigInitial } from '@core/features/tasks/api/browser/create-task-modal/use-workspace-config';
 import { useTaskSettings } from '@core/features/tasks/api/browser/hooks/useTaskSettings';
 import type { LinkedIssue } from '@core/primitives/linked-issues/api';
 import { useLinkedIssueContext } from '../issue-context/use-linked-issue-context';
@@ -23,7 +24,9 @@ export function useCreateTaskState(
   repositoryWorkspaceId: string | null | undefined,
   initialPR?: PullRequest,
   initialLinkedType: LinkedType = null,
-  initialWorkspaceId?: string
+  initialWorkspaceId?: string,
+  /** Choices a caller made for the user: the task's name and where it works. */
+  preset?: { taskName?: string; workspace?: WorkspaceConfigInitial }
 ) {
   const { autoGenerateName, createBranchAndWorktree, includeIssueContextByDefault } =
     useTaskSettings();
@@ -94,6 +97,7 @@ export function useCreateTaskState(
 
   // Pick the effective generated name and pending state based on linked type + selection.
   const generatedName = (() => {
+    if (preset?.taskName) return preset.taskName;
     if (linkedType === 'issue' && linkedIssue !== null) {
       return directIssueTaskName ?? (shouldGenerateFromIssue ? issueGeneratedName : undefined);
     }
@@ -105,6 +109,7 @@ export function useCreateTaskState(
   })();
 
   const isPending = (() => {
+    if (preset?.taskName) return false;
     if (linkedType === 'issue' && linkedIssue !== null)
       return shouldGenerateFromIssue && isIssuePending;
     if (linkedType === 'pr' && linkedPR !== null) return shouldGenerateFromPR && isPRPending;
@@ -135,7 +140,7 @@ export function useCreateTaskState(
           presetId: 'use-existing',
           selectedWorkspaceId: initialWorkspaceId,
         }
-      : undefined,
+      : preset?.workspace,
   });
 
   // Switching linked type clears the selection for the previous type.

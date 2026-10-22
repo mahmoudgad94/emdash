@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTriagePrompt, type TriageContext } from './triage-prompt';
+import { buildTriagePrompt, triageTaskName, type TriageContext } from './triage-prompt';
 
 const context: TriageContext = {
   clientName: 'FriendsApp',
@@ -55,5 +55,12 @@ describe('buildTriagePrompt', () => {
     expect(prompt).toContain('m29');
     expect(prompt).not.toContain('m5:');
     expect(prompt).toContain('- none registered');
+  });
+});
+
+describe('triageTaskName', () => {
+  it('names the run after the client and the last sender', () => {
+    expect(triageTaskName(context)).toBe('Triage FriendsApp: Stephen Ellis');
+    expect(triageTaskName({ clientName: 'Acme', messages: [] })).toBe('Triage Acme');
   });
 });
